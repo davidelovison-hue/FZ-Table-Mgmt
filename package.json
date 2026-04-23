@@ -15,6 +15,7 @@
     "deploy:gh-pages": "npm run build:gh-pages && npx angular-cli-ghpages --dir=dist/fz-table-mgmt/browser",
     "push-and-deploy": "git push -u origin main && npm run deploy:gh-pages",
     "github:create-repo": "bash scripts/create-feverzone-guestlist-repo.sh",
+    "github:setup": "bash scripts/do-create-repo-and-deploy.sh",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },
