@@ -14,6 +14,7 @@
     "build:gh-pages": "ng build --configuration production --base-href /feverzone-guestlist/",
     "deploy:gh-pages": "npm run build:gh-pages && npx angular-cli-ghpages --dir=dist/fz-table-mgmt/browser",
     "push-and-deploy": "git push -u origin main && npm run deploy:gh-pages",
+    "github:create-repo": "bash scripts/create-feverzone-guestlist-repo.sh",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },
