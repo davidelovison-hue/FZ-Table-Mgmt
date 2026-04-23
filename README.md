@@ -1,4 +1,6 @@
-# FZ-Table-Mgmt
+# FeverZone guestlist prototype
+
+Angular app (calendar + guestlist hubs). **Live demo:** `https://davidelovison-hue.github.io/feverzone-guestlist/` (after GitHub Pages is enabled on the `feverzone-guestlist` repo).
 
 This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 18.2.21.
 
