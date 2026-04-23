@@ -1,0 +1,123 @@
+<div class="gl-page">
+  <div class="gl-page-head">
+    <div class="gl-toolbar" role="region" aria-label="Guestlist limits tools">
+      <p class="gl-toolbar__meta">
+        <span class="gl-toolbar__label">Event</span>
+        <span class="gl-toolbar__event">{{ w.eventLabel }}</span>
+        <span class="gl-toolbar__sep" aria-hidden="true">·</span>
+        <span class="gl-toolbar__hint">Cap how many tickets each PR can sell on this guestlist (internal channel)</span>
+      </p>
+    </div>
+    @if (w.persistMessage(); as msg) {
+      <p class="gl-toast" role="status">{{ msg }}</p>
+    }
+  </div>
+
+  <div class="gl-layout">
+    <aside class="gl-nav" aria-label="Guestlists in this event">
+      <h2 class="gl-nav__title">Guestlists</h2>
+      <ul class="gl-nav__list">
+        @for (g of w.guestlists(); track g.id) {
+          <li>
+            <button
+              type="button"
+              class="gl-nav__item"
+              [class.gl-nav__item--active]="g.id === w.selectedId()"
+              (click)="w.selectGuestlist(g.id)">
+              <span class="gl-nav__top">
+                <span
+                  class="gl-nav__swatch"
+                  [style.background-color]="g.listColor"
+                  [attr.title]="'List colour: ' + g.listColor"
+                  aria-hidden="true"></span>
+                <span class="gl-nav__name">{{ g.name }}</span>
+              </span>
+              <span class="gl-nav__meta">
+                @if (g.published) {
+                  <span class="gl-pill gl-pill--ok">Live</span>
+                } @else {
+                  <span class="gl-pill gl-pill--muted">Draft</span>
+                }
+              </span>
+              <span class="gl-nav__details">
+                <span class="gl-nav__detail-line">{{ w.navEntryWindowSummary(g) }}</span>
+                <span class="gl-nav__detail-line">
+                  {{ w.navGenderSummary(g) }}
+                  <span class="gl-nav__detail-sep" aria-hidden="true">·</span>
+                  {{ w.navMinAgeSummary(g) }}
+                </span>
+                <span class="gl-nav__detail-line">{{ w.navTotalCapacitySummary(g) }}</span>
+              </span>
+            </button>
+          </li>
+        }
+      </ul>
+    </aside>
+
+    @if (w.selectedGuestlist(); as gl) {
+      <section class="gl-editor" aria-label="Guestlist sales limits">
+        <div class="gl-editor__head">
+          <div class="gl-editor__title-row">
+            <span
+              class="gl-editor__title-swatch"
+              [style.background-color]="gl.listColor"
+              [attr.title]="'List colour: ' + gl.listColor"
+              aria-hidden="true"></span>
+            <h2 class="gl-editor__title">Limits — “{{ gl.name }}”</h2>
+          </div>
+          <div class="gl-editor__head-actions">
+            <button type="button" class="button button--small gl-btn-primary" (click)="w.saveConfiguration()">
+              Save
+            </button>
+          </div>
+        </div>
+
+        <div class="gl-grid">
+          <fieldset class="gl-fieldset gl-fieldset--wide">
+            <legend>PR ticket limits</legend>
+            <p class="gl-note">
+              Only <strong>assigned</strong> PRs appear here. Set how many tickets each may sell on this guestlist; leave empty
+              for <strong>no limit</strong>. Add or remove assignees under <strong>Configuration → PR assignment</strong>.
+            </p>
+            @if (gl.prAssignees.length === 0) {
+              <p class="gl-note gl-limits-empty">No PR assignees yet. Configure PR assignment on the Configuration tab first.</p>
+            } @else {
+              <div class="gl-limits-table-wrap" role="region" aria-label="Per PR ticket caps">
+                <table class="gl-limits-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">PR / team</th>
+                      <th scope="col">Max tickets</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (p of w.assignedPrCatalogRows(gl); track p.id) {
+                      <tr>
+                        <td>
+                          <span class="gl-limits-label">{{ p.label }}</span>
+                        </td>
+                        <td>
+                          <input
+                            type="number"
+                            class="gl-input gl-limits-input"
+                            min="0"
+                            step="1"
+                            inputmode="numeric"
+                            placeholder="Unlimited"
+                            [value]="w.prTicketLimitInputValue(gl, p.id)"
+                            (input)="w.setPrTicketLimit(p.id, $any($event.target).value)" />
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          </fieldset>
+        </div>
+      </section>
+    } @else {
+      <p class="gl-empty">No guestlist selected. Add one from the sidebar.</p>
+    }
+  </div>
+</div>

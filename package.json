@@ -1,11 +1,17 @@
 {
   "name": "fz-table-mgmt",
   "version": "0.0.0",
+  "description": "Fever Zone table / guestlist prototype — deploys to GitHub Pages",
+  "homepage": "https://davidelovison-hue.github.io/fz-table-mgmt/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/davidelovison-hue/fz-table-mgmt.git"
+  },
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
-    "build:gh-pages": "ng build --configuration production --base-href /FZ-Table-Mgmt/",
+    "build:gh-pages": "ng build --configuration production --base-href /fz-table-mgmt/",
     "deploy:gh-pages": "npm run build:gh-pages && npx angular-cli-ghpages --dir=dist/fz-table-mgmt/browser",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"

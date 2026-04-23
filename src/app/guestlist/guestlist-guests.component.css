@@ -1,0 +1,201 @@
+:host {
+  display: block;
+}
+
+/* Stacked panels inside shared gl-editor (gl-page / gl-layout come from guestlist-config styles). */
+.gg-editor-stack {
+  margin-top: 0;
+}
+
+.gg-editor-stack .gg-card:first-child {
+  margin-top: 0;
+}
+
+.gl-editor--empty {
+  display: flex;
+  align-items: flex-start;
+  min-height: 12rem;
+}
+
+.gl-editor--empty .gl-empty {
+  margin: 0;
+}
+
+.gg-card {
+  margin-bottom: 0;
+  padding: 1rem 1.1rem 1.1rem;
+  background: #fbfcfc;
+  border: 1px solid #e6eaed;
+  border-radius: 8px;
+  box-sizing: border-box;
+}
+
+.gg-table-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.gg-table-head .gg-card__title {
+  margin: 0;
+}
+
+.gg-card__title {
+  margin: 0 0 0.75rem;
+  font-family: Montserrat, sans-serif;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #031419;
+}
+
+.gg-order-hint {
+  margin: -0.35rem 0 0.65rem;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: #536b75;
+}
+
+.gg-col-pos {
+  width: 2.25rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+td.gg-col-pos {
+  font-weight: 700;
+  color: #031419;
+}
+
+.gg-field {
+  display: grid;
+  gap: 0.3rem;
+}
+
+.gg-field__label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #536b75;
+}
+
+.gg-optional {
+  font-weight: 500;
+  color: #5a7385;
+}
+
+.gg-input,
+.gg-textarea {
+  font-family: Montserrat, sans-serif;
+  font-size: 0.8125rem;
+  border: 1px solid #ccd2d8;
+  border-radius: 6px;
+  padding: 0.45rem 0.55rem;
+  color: #031419;
+  background: #fff;
+  min-width: 0;
+}
+
+.gg-textarea {
+  resize: vertical;
+  min-height: 2.75rem;
+  line-height: 1.35;
+}
+
+select.gg-input {
+  cursor: pointer;
+}
+
+.gg-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem 0.75rem;
+}
+
+@media (max-width: 640px) {
+  .gg-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.gg-field--span2 {
+  grid-column: 1 / -1;
+}
+
+.gg-form-actions {
+  margin-top: 0.85rem;
+}
+
+.gg-feedback {
+  margin: 0.65rem 0 0;
+  font-size: 0.8125rem;
+  color: #18824c;
+}
+
+.gg-empty {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #536b75;
+}
+
+.gg-table-wrap {
+  overflow-x: auto;
+  margin: 0 -0.15rem;
+}
+
+.gg-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.gg-table th,
+.gg-table td {
+  padding: 0.5rem 0.45rem;
+  text-align: left;
+  border-bottom: 1px solid #e6eaed;
+  vertical-align: top;
+}
+
+.gg-table th {
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #5a7385;
+  background: #fff;
+}
+
+.gg-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.gg-cell-notes {
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #536b75;
+  font-size: 0.75rem;
+}
+
+.gg-remove {
+  margin: 0;
+  padding: 0.2rem 0.45rem;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  font-family: Montserrat, sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  color: #0079ca;
+  text-decoration: underline;
+  text-underline-offset: 0.1em;
+  cursor: pointer;
+}
+
+.gg-remove:hover {
+  color: #005795;
+  background: rgba(0, 121, 202, 0.06);
+}

@@ -1,0 +1,352 @@
+<div class="gl-page">
+  <div class="gl-page-head">
+    <div class="gl-toolbar" role="region" aria-label="Guestlist tools">
+      <p class="gl-toolbar__meta">
+        <span class="gl-toolbar__label">Event</span>
+        <span class="gl-toolbar__event">{{ eventLabel }}</span>
+        <span class="gl-toolbar__sep" aria-hidden="true">·</span>
+        <span class="gl-toolbar__hint">Phase 1: Fever Zone channel, entry rule, PR assignees</span>
+      </p>
+      <div class="gl-toolbar__actions" role="toolbar" aria-label="Guestlist list actions">
+        <button type="button" class="button button--small button--secondary" (click)="addGuestlist()">
+          New guestlist
+        </button>
+      </div>
+    </div>
+    @if (persistMessage(); as msg) {
+      <p class="gl-toast" role="status">{{ msg }}</p>
+    }
+  </div>
+
+  <div class="gl-layout">
+    <aside class="gl-nav" aria-label="Guestlists in this event">
+      <h2 class="gl-nav__title">Guestlists</h2>
+      <ul class="gl-nav__list">
+        @for (g of guestlists(); track g.id) {
+          <li>
+            <button
+              type="button"
+              class="gl-nav__item"
+              [class.gl-nav__item--active]="g.id === selectedId()"
+              (click)="selectGuestlist(g.id)">
+              <span class="gl-nav__top">
+                <span
+                  class="gl-nav__swatch"
+                  [style.background-color]="g.listColor"
+                  [attr.title]="'List colour: ' + g.listColor"
+                  aria-hidden="true"></span>
+                <span class="gl-nav__name">{{ g.name }}</span>
+              </span>
+              <span class="gl-nav__meta">
+                @if (g.published) {
+                  <span class="gl-pill gl-pill--ok">Live</span>
+                } @else {
+                  <span class="gl-pill gl-pill--muted">Draft</span>
+                }
+              </span>
+              <span class="gl-nav__details">
+                <span class="gl-nav__detail-line">{{ navEntryWindowSummary(g) }}</span>
+                <span class="gl-nav__detail-line">
+                  {{ navGenderSummary(g) }}
+                  <span class="gl-nav__detail-sep" aria-hidden="true">·</span>
+                  {{ navMinAgeSummary(g) }}
+                </span>
+                <span class="gl-nav__detail-line">{{ navTotalCapacitySummary(g) }}</span>
+              </span>
+            </button>
+          </li>
+        }
+      </ul>
+    </aside>
+
+    @if (selectedGuestlist(); as gl) {
+      <section class="gl-editor" aria-label="Edit guestlist">
+        <div class="gl-editor__head">
+          <div class="gl-editor__title-row">
+            <span
+              class="gl-editor__title-swatch"
+              [style.background-color]="gl.listColor"
+              [attr.title]="'List colour: ' + gl.listColor"
+              aria-hidden="true"></span>
+            <h2 class="gl-editor__title">Edit “{{ gl.name }}”</h2>
+          </div>
+          <div class="gl-editor__head-actions">
+            <button type="button" class="button button--small gl-btn-primary" (click)="saveConfiguration()">
+              Save
+            </button>
+            <button
+              type="button"
+              class="button button--small button--secondary"
+              (click)="removeGuestlist(gl.id)"
+              [disabled]="guestlists().length <= 1">
+              Delete guestlist
+            </button>
+          </div>
+        </div>
+
+        <div class="gl-grid">
+          <div class="gl-fieldset-pair">
+            <fieldset class="gl-fieldset gl-fieldset--details">
+              <legend>Guestlist details</legend>
+              <div class="gl-details-grid">
+                <label class="gl-field">
+                  <span class="gl-field__label">Name</span>
+                  <input type="text" class="gl-input" [value]="gl.name" (input)="setName($any($event.target).value)" />
+                </label>
+                <label class="gl-field">
+                  <span class="gl-field__label">Visibility</span>
+                  <select class="gl-input" [value]="gl.visibility" (change)="setVisibility($any($event.target).value)">
+                    <option value="hidden">Hidden (not on event page)</option>
+                    <option value="public">Public label (Phase 2 listing)</option>
+                  </select>
+                </label>
+                <label class="gl-field gl-field--full">
+                  <span class="gl-field__label">List colour</span>
+                  <span class="gl-field__hint">Shown next to this guestlist in the sidebar (and synced for other screens).</span>
+                  <select class="gl-input" [value]="gl.listColor" (change)="setListColor($any($event.target).value)">
+                    @if (!isPresetListColor(gl.listColor)) {
+                      <option [value]="gl.listColor">Custom — {{ gl.listColor }}</option>
+                    }
+                    @for (p of listColorPresets; track p.hex) {
+                      <option [value]="p.hex">{{ p.label }}</option>
+                    }
+                  </select>
+                </label>
+                <label class="gl-field gl-field--full">
+                  <span class="gl-field__label">Description</span>
+                  <textarea class="gl-textarea" rows="2" [value]="gl.description" (input)="setDescription($any($event.target).value)"></textarea>
+                </label>
+                <label class="gl-field">
+                  <span class="gl-field__label">Opens</span>
+                  <input type="datetime-local" class="gl-input" [value]="gl.opensAt" (input)="setOpensAt($any($event.target).value)" />
+                </label>
+                <label class="gl-field">
+                  <span class="gl-field__label">Deadline</span>
+                  <input type="datetime-local" class="gl-input" [value]="gl.deadlineAt" (input)="setDeadlineAt($any($event.target).value)" />
+                </label>
+                <label class="gl-field gl-field--full">
+                  <span class="gl-field__label">Max capacity (global)</span>
+                  <input
+                    type="number"
+                    class="gl-input"
+                    min="0"
+                    placeholder="Unlimited"
+                    [value]="gl.maxCapacity ?? ''"
+                    (input)="setMaxCapacity($any($event.target).value)" />
+                </label>
+              </div>
+            </fieldset>
+
+            <fieldset class="gl-fieldset gl-fieldset--distribution">
+              <legend>Distribution</legend>
+              <label class="gl-check">
+                <input type="checkbox" [checked]="gl.internalChannelEnabled" (change)="toggleInternalChannel($any($event.target).checked)" />
+                <span><strong>Internal (Fever Zone)</strong> — PR can add attendees</span>
+              </label>
+              <p class="gl-note">Phase 1: only this channel is active in the prototype.</p>
+              <div class="gl-channel-disabled">
+                <label class="gl-check gl-check--disabled">
+                  <input type="checkbox" disabled />
+                  <span>Public on event page <em>(Phase 2)</em></span>
+                </label>
+                <label class="gl-check gl-check--disabled">
+                  <input type="checkbox" disabled />
+                  <span>Private link <em>(Phase 2)</em></span>
+                </label>
+              </div>
+            </fieldset>
+          </div>
+
+          <fieldset class="gl-fieldset gl-fieldset--wide">
+            <legend>Guest communications</legend>
+            <p class="gl-note">
+              Control whether guests receive an automatic email when they are added to this list. Templates and sending are
+              out of scope for this prototype; this flag is saved with the guestlist configuration.
+            </p>
+            <div class="gl-rsvp-row">
+              <div class="gl-rsvp-row__copy">
+                <p class="gl-rsvp-row__title">Enable RSVP requests</p>
+                <p class="gl-rsvp-row__desc">
+                  Requires manual approval for all guest list entries. Attendees will receive their QR code only after being
+                  confirmed.
+                </p>
+              </div>
+              <label class="gl-switch">
+                <input
+                  type="checkbox"
+                  role="switch"
+                  [attr.aria-checked]="gl.enableRsvpRequests ? 'true' : 'false'"
+                  [checked]="gl.enableRsvpRequests"
+                  (change)="toggleEnableRsvpRequests($any($event.target).checked)" />
+                <span class="gl-switch__track" aria-hidden="true">
+                  <span class="gl-switch__thumb"></span>
+                </span>
+              </label>
+            </div>
+            <label class="gl-check">
+              <input
+                type="checkbox"
+                [checked]="gl.guestEmailConfirmationEnabled"
+                (change)="toggleGuestEmailConfirmation($any($event.target).checked)" />
+              <span>
+                <strong>Email confirmation to guests</strong> — send a confirmation email when someone is added to this
+                guestlist
+              </span>
+            </label>
+            <label class="gl-field gl-field--full gl-field--tight-top">
+              <span class="gl-field__label">Notification language</span>
+              <span class="gl-field__hint">Used for guest-facing emails and SMS in production; templates are not sent in this prototype.</span>
+              <select
+                class="gl-input"
+                [value]="gl.notificationLanguage"
+                (change)="setNotificationLanguage($any($event.target).value)">
+                @for (opt of notificationLanguageOptions; track opt.value) {
+                  <option [value]="opt.value">{{ opt.label }}</option>
+                }
+              </select>
+            </label>
+          </fieldset>
+
+          <fieldset class="gl-fieldset gl-fieldset--wide">
+            <legend>Entry condition</legend>
+            <p class="gl-note">
+              One rule per guestlist: <strong>price</strong>, <strong>entry time window</strong> (overnight supported, e.g.
+              22:00–03:00), optional <strong>minimum age</strong> and <strong>gender restriction</strong>, plus
+              <strong>Includes</strong> (perks) and <strong>additional info</strong> shown before signup. A <strong>label</strong> is
+              required to publish.
+            </p>
+            <div class="gl-condition-card">
+              <div class="gl-condition-card__grid">
+                <label class="gl-field gl-field--cond-label">
+                  <span class="gl-field__label">Label</span>
+                  <input
+                    type="text"
+                    class="gl-input"
+                    [value]="gl.condition.label"
+                    (input)="updateCondition({ label: $any($event.target).value })" />
+                </label>
+                <label class="gl-field gl-field--cond-price">
+                  <span class="gl-field__label">Price (€)</span>
+                  <input
+                    type="number"
+                    class="gl-input"
+                    min="0"
+                    step="1"
+                    [value]="gl.condition.price"
+                    (input)="updateCondition({ price: coercePrice($any($event.target).value) })" />
+                </label>
+                <label class="gl-field gl-field--cond-from">
+                  <span class="gl-field__label">Entry from</span>
+                  <input
+                    type="time"
+                    class="gl-input"
+                    [value]="gl.condition.windowStart"
+                    (input)="updateCondition({ windowStart: $any($event.target).value })" />
+                </label>
+                <label class="gl-field gl-field--cond-until">
+                  <span class="gl-field__label">Entry until</span>
+                  <input
+                    type="time"
+                    class="gl-input"
+                    [value]="gl.condition.windowEnd"
+                    (input)="updateCondition({ windowEnd: $any($event.target).value })" />
+                </label>
+                <label class="gl-field gl-field--cond-age">
+                  <span class="gl-field__label">Minimum age</span>
+                  <input
+                    type="number"
+                    class="gl-input"
+                    min="0"
+                    max="120"
+                    placeholder="No minimum"
+                    [value]="gl.condition.minAge ?? ''"
+                    (input)="updateCondition({ minAge: coerceOptionalMinAge($any($event.target).value) })" />
+                </label>
+                <label class="gl-field gl-field--cond-gender">
+                  <span class="gl-field__label">Gender restriction</span>
+                  <select
+                    class="gl-input"
+                    [value]="gl.condition.genderRestriction"
+                    (change)="setConditionGender($any($event.target).value)">
+                    <option value="none">No restriction</option>
+                    <option value="women">Women only</option>
+                    <option value="men">Men only</option>
+                  </select>
+                </label>
+                <label class="gl-field gl-field--full">
+                  <span class="gl-field__label">Includes (perks / benefits)</span>
+                  <textarea
+                    class="gl-textarea"
+                    rows="2"
+                    [value]="gl.condition.includes"
+                    (input)="updateCondition({ includes: $any($event.target).value })"></textarea>
+                </label>
+                <label class="gl-field gl-field--full">
+                  <span class="gl-field__label">Additional info</span>
+                  <textarea
+                    class="gl-textarea"
+                    rows="2"
+                    [value]="gl.condition.additionalInfo"
+                    (input)="updateCondition({ additionalInfo: $any($event.target).value })"></textarea>
+                </label>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset class="gl-fieldset gl-fieldset--wide">
+            <legend>Attendee data (Booking Questions)</legend>
+            <p class="gl-note">Toggle required fields for this guestlist. Custom questions follow your BQ setup.</p>
+            <ul class="gl-attendee-list">
+              @for (f of gl.attendeeFields; track f.id) {
+                <li class="gl-attendee-row">
+                  <span class="gl-attendee-label">{{ f.label }}</span>
+                  <label class="gl-check">
+                    <input
+                      type="checkbox"
+                      [checked]="f.required"
+                      (change)="toggleAttendeeRequired(f.id, $any($event.target).checked)" />
+                    <span>Required</span>
+                  </label>
+                </li>
+              }
+            </ul>
+          </fieldset>
+
+          <fieldset class="gl-fieldset gl-fieldset--wide">
+            <legend>PR assignment</legend>
+            <p class="gl-note">Who can add guests on the internal (Fever Zone) channel. Open the list and tick everyone who should have access.</p>
+            <div class="gl-field gl-field--full gl-field--tight">
+              <span class="gl-field__label">Assignees</span>
+              <details class="gl-pr-dd">
+                <summary class="gl-pr-dd__summary">
+                  <span class="gl-pr-dd__summary-text">{{ prAssignTriggerLabel(gl) }}</span>
+                  <i class="fa-solid fa-chevron-down gl-pr-dd__icon" aria-hidden="true"></i>
+                </summary>
+                <div class="gl-pr-dd__panel" role="group" aria-label="PR directory">
+                  @for (p of prCatalog; track p.id) {
+                    <label class="gl-pr-dd__row">
+                      <input
+                        type="checkbox"
+                        [checked]="gl.prAssignees.includes(p.id)"
+                        (change)="togglePrAssignee(p.id, $any($event.target).checked)" />
+                      <span>{{ p.label }}</span>
+                    </label>
+                  }
+                </div>
+              </details>
+              @if (gl.prAssignees.length) {
+                <ul class="gl-pr-chips" aria-label="Selected assignees">
+                  @for (id of gl.prAssignees; track id) {
+                    <li class="gl-pr-chip">{{ prShortLabel(id) }}</li>
+                  }
+                </ul>
+              }
+            </div>
+          </fieldset>
+        </div>
+      </section>
+    } @else {
+      <p class="gl-empty">No guestlist selected. Add one from the sidebar.</p>
+    }
+  </div>
+</div>

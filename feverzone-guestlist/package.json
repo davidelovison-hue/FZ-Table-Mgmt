@@ -1,0 +1,6 @@
+{
+  "name": "feverzone-guestlist",
+  "version": "0.0.0",
+  "private": true,
+  "description": "FeverZone guestlist – separate from FZ-Table-Mgmt table calendar (src/). Scaffold your app here (e.g. ng new in this folder or link from a workspace)."
+}

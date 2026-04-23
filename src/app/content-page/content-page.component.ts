@@ -5,10 +5,10 @@ type EventMode = 'one-off' | 'recurring';
 type CalendarView = 'single-day' | 'multi-day';
 type TableStatus = 'available' | 'reserved' | 'booked' | 'blocked';
 type BookingStatus = 'pending confirmation' | 'confirmed';
-type BookingPaymentStatus = 'paid' | 'not-paid';
+type BookingPaymentStatus = 'paid' | 'not-paid' | 'partial-deposit';
 type AssignmentStatus = 'pending confirmation' | 'confirmed';
 type ZoneKey = 'vip' | 'main-room' | 'terrace';
-type ZoneOrder = 'ops-priority' | 'alphabetical' | 'capacity-high';
+type ZoneOrder = 'alphabetical' | 'capacity-high' | 'price-high' | 'price-low';
 type SidePanelMode =
   | 'closed'
   | 'available'
@@ -55,6 +55,8 @@ interface Booking {
   groupSize: number;
   /** Payment concept: booked = paid, reserved = not paid (slot-level). */
   paymentStatus: BookingPaymentStatus;
+  /** When `paymentStatus` is partial-deposit: upfront deposit already charged (same units as totalPrice). */
+  depositPaidAmount?: number;
   status: BookingStatus;
   totalPrice: number;
   email?: string;
@@ -97,7 +99,7 @@ export class ContentPageComponent {
   readonly events: EventConfig[] = [
     {
       id: 'event-recurring-sky-fridays',
-      name: 'Birdie Shack Sky Box - August recurring',
+      name: 'Nightclub event — August (recurring)',
       mode: 'recurring',
       sessions: [
         { id: 's-mon', label: 'Mon', dateLabel: '3 Aug', datetimeIso: '2026-08-03T22:00:00Z' },
@@ -111,7 +113,7 @@ export class ContentPageComponent {
     },
     {
       id: 'event-one-off-launch',
-      name: 'Sky Box Season Kickoff (one-off)',
+      name: 'Nightclub event — one-off',
       mode: 'one-off',
       sessions: [{ id: 'oneoff-1', label: 'Fri', dateLabel: '14 Aug', datetimeIso: '2026-08-14T22:00:00Z' }],
     },
@@ -131,7 +133,7 @@ export class ContentPageComponent {
   readonly eventId = signal('event-recurring-sky-fridays');
   readonly view = signal<CalendarView>('single-day');
   readonly singleDaySessionIndex = signal(0);
-  readonly zoneOrder = signal<ZoneOrder>('ops-priority');
+  readonly zoneOrder = signal<ZoneOrder>('alphabetical');
   readonly selectedZones = signal<Record<ZoneKey, boolean>>({
     vip: true,
     'main-room': true,
@@ -175,7 +177,8 @@ export class ContentPageComponent {
       tableId: 't-main-1',
       guestName: 'Alicia Romero',
       groupSize: 6,
-      paymentStatus: 'paid',
+      paymentStatus: 'partial-deposit',
+      depositPaidAmount: 250,
       status: 'confirmed',
       totalPrice: 700,
       email: 'alicia@example.com',
@@ -192,7 +195,7 @@ export class ContentPageComponent {
       guestName: 'Davide Lovison',
       groupSize: 12,
       paymentStatus: 'paid',
-      status: 'pending confirmation',
+      status: 'confirmed',
       totalPrice: 3800,
       email: 'davide.lovison@feverup.com',
       phone: '+34633146693',
@@ -261,6 +264,29 @@ export class ContentPageComponent {
     return event.sessions;
   });
 
+  /** Session index whose date matches today (local), or 0 if none match this event. */
+  readonly singleDayTodaySessionIndex = computed(() => {
+    const event = this.activeEvent();
+    if (!event?.sessions.length) {
+      return 0;
+    }
+    const now = new Date();
+    const y = now.getFullYear();
+    const mo = now.getMonth();
+    const d = now.getDate();
+    for (let i = 0; i < event.sessions.length; i++) {
+      const dt = new Date(event.sessions[i].datetimeIso);
+      if (dt.getFullYear() === y && dt.getMonth() === mo && dt.getDate() === d) {
+        return i;
+      }
+    }
+    return 0;
+  });
+
+  readonly isSingleDayOnTodaySession = computed(
+    () => this.singleDaySessionIndex() === this.singleDayTodaySessionIndex(),
+  );
+
   readonly orderedZones = computed(() => {
     const groups: Record<ZoneKey, TableAsset[]> = {
       vip: [],
@@ -272,16 +298,30 @@ export class ContentPageComponent {
     }
 
     const sortMode = this.zoneOrder();
-    const orderByMode: ZoneKey[] =
-      sortMode === 'alphabetical'
-        ? (Object.entries(groups)
-            .sort((a, b) => a[1][0].zoneLabel.localeCompare(b[1][0].zoneLabel))
-            .map((entry) => entry[0]) as ZoneKey[])
-        : sortMode === 'capacity-high'
-          ? (Object.entries(groups)
-              .sort((a, b) => this.avgCapacity(b[1]) - this.avgCapacity(a[1]))
-              .map((entry) => entry[0]) as ZoneKey[])
-          : ['vip', 'main-room', 'terrace'];
+    const entries = Object.entries(groups) as [ZoneKey, TableAsset[]][];
+    let orderByMode: ZoneKey[];
+    switch (sortMode) {
+      case 'alphabetical':
+        orderByMode = entries
+          .sort((a, b) => a[1][0].zoneLabel.localeCompare(b[1][0].zoneLabel))
+          .map((e) => e[0]);
+        break;
+      case 'capacity-high':
+        orderByMode = entries
+          .sort((a, b) => this.avgCapacity(b[1]) - this.avgCapacity(a[1]))
+          .map((e) => e[0]);
+        break;
+      case 'price-high':
+        orderByMode = entries
+          .sort((a, b) => this.avgBasePrice(b[1]) - this.avgBasePrice(a[1]))
+          .map((e) => e[0]);
+        break;
+      case 'price-low':
+        orderByMode = entries
+          .sort((a, b) => this.avgBasePrice(a[1]) - this.avgBasePrice(b[1]))
+          .map((e) => e[0]);
+        break;
+    }
 
     return orderByMode.map((zone) => ({
         key: zone,
@@ -293,6 +333,31 @@ export class ContentPageComponent {
   readonly visibleZones = computed(() =>
     this.orderedZones().filter((zone) => this.selectedZones()[zone.key]),
   );
+
+  /** Slot totals for current event, visible sessions, and zone filters (ignores status checkboxes & zone collapse). */
+  readonly slotStatusCounts = computed(() => {
+    const event = this.activeEvent();
+    const sessions = this.visibleSessions();
+    const zones = this.visibleZones();
+    const counts: Record<TableStatus, number> = {
+      available: 0,
+      reserved: 0,
+      booked: 0,
+      blocked: 0,
+    };
+    if (!event || !sessions.length) {
+      return counts;
+    }
+    for (const zone of zones) {
+      for (const table of zone.tables) {
+        for (const session of sessions) {
+          const status = this.resolveCellStatus(event.id, session.id, table.id);
+          counts[status]++;
+        }
+      }
+    }
+    return counts;
+  });
 
   readonly activeBooking = computed(() => {
     const bookingId = this.activeBookingId();
@@ -308,18 +373,27 @@ export class ContentPageComponent {
     if (!booking || !event) {
       return [];
     }
-    return this.orderedZones().map((zone) => ({
-      ...zone,
-      tables: zone.tables.filter((table) => {
-        if (!this.isPartySizeCompatible(table.id, booking.groupSize)) {
-          return false;
-        }
-        if (table.id === booking.tableId) {
-          return true;
-        }
-        return this.resolveCellStatus(event.id, booking.sessionId, table.id) === 'available';
-      }),
-    }));
+    const current = this.tableById(booking.tableId);
+    if (!current) {
+      return [];
+    }
+    const zoneMeta = this.orderedZones().find((zone) => zone.key === current.zone);
+    if (!zoneMeta) {
+      return [];
+    }
+    const tables = zoneMeta.tables.filter((table) => {
+      if (table.zone !== current.zone) {
+        return false;
+      }
+      if (!this.isPartySizeCompatible(table.id, booking.groupSize)) {
+        return false;
+      }
+      if (table.id === booking.tableId) {
+        return true;
+      }
+      return this.resolveCellStatus(event.id, booking.sessionId, table.id) === 'available';
+    });
+    return tables.length ? [{ ...zoneMeta, tables }] : [];
   });
 
   readonly availableTablesForReservedMove = computed(() => {
@@ -329,18 +403,24 @@ export class ContentPageComponent {
     if (!event || !cell || !reserved) {
       return [];
     }
-    return this.orderedZones().map((zone) => ({
-      ...zone,
-      tables: zone.tables.filter((table) => {
-        if (!this.isPartySizeCompatible(table.id, reserved.groupSize)) {
-          return false;
-        }
-        if (table.id === cell.table.id) {
-          return true;
-        }
-        return this.resolveCellStatus(event.id, cell.session.id, table.id) === 'available';
-      }),
-    }));
+    const current = cell.table;
+    const zoneMeta = this.orderedZones().find((zone) => zone.key === current.zone);
+    if (!zoneMeta) {
+      return [];
+    }
+    const tables = zoneMeta.tables.filter((table) => {
+      if (table.zone !== current.zone) {
+        return false;
+      }
+      if (!this.isPartySizeCompatible(table.id, reserved.groupSize)) {
+        return false;
+      }
+      if (table.id === cell.table.id) {
+        return true;
+      }
+      return this.resolveCellStatus(event.id, cell.session.id, table.id) === 'available';
+    });
+    return tables.length ? [{ ...zoneMeta, tables }] : [];
   });
 
   readonly currentModificationDelta = computed(() => {
@@ -405,8 +485,8 @@ export class ContentPageComponent {
     this.singleDaySessionIndex.update((idx) => Math.min(sessions.length - 1, idx + 1));
   }
 
-  goFirstSingleDay(): void {
-    this.singleDaySessionIndex.set(0);
+  goTodaySingleDay(): void {
+    this.singleDaySessionIndex.set(this.singleDayTodaySessionIndex());
   }
 
   setZoneOrder(order: ZoneOrder): void {
@@ -720,9 +800,9 @@ export class ContentPageComponent {
 
   reserveAssignmentStatusLabel(status: AssignmentStatus): string {
     if (status === 'pending confirmation') {
-      return 'Pending confirmation';
+      return 'Table pending confirmation';
     }
-    return 'Confirmed';
+    return 'Table confirmed';
   }
 
   reserveAssignmentIsPending(status: AssignmentStatus): boolean {
@@ -954,9 +1034,14 @@ export class ContentPageComponent {
   /** Full status label for drawer badge (matches FeverZone copy). */
   bookingStatusBadgeLabel(status: BookingStatus): string {
     if (status === 'pending confirmation') {
-      return 'Pending confirmation';
+      return 'Table pending confirmation';
     }
     return status.charAt(0).toUpperCase() + status.slice(1);
+  }
+
+  /** Table assignment line for booked drawer (matches reserved wording). */
+  bookingTableAssignmentLabel(booking: Booking): string {
+    return booking.status === 'pending confirmation' ? 'Table pending confirmation' : 'Table confirmed';
   }
 
   bookingStatusBadgePending(status: BookingStatus): boolean {
@@ -964,11 +1049,30 @@ export class ContentPageComponent {
   }
 
   bookingPaymentTagLabel(booking: Booking): string {
-    return booking.paymentStatus === 'paid' ? 'Paid' : 'Not paid';
+    switch (booking.paymentStatus) {
+      case 'paid':
+        return 'Paid';
+      case 'partial-deposit':
+        return 'Partial payment';
+      case 'not-paid':
+        return 'Not paid';
+    }
   }
 
+  /** Fully settled (excludes partial deposit). */
   bookingIsPaid(booking: Booking): boolean {
     return booking.paymentStatus === 'paid';
+  }
+
+  bookingPaymentIsPartial(booking: Booking): boolean {
+    return booking.paymentStatus === 'partial-deposit';
+  }
+
+  bookingOutstandingAfterDeposit(booking: Booking): number | null {
+    if (booking.paymentStatus !== 'partial-deposit' || booking.depositPaidAmount == null) {
+      return null;
+    }
+    return Math.max(0, booking.totalPrice - booking.depositPaidAmount);
   }
 
   confirmAssignment(): void {
@@ -1001,14 +1105,6 @@ export class ContentPageComponent {
     return slot?.groupSize ?? 0;
   }
 
-  reservedCellSecondaryLabel(eventId: string, sessionId: string, tableId: string): string {
-    const slot = this.reservedSlotForCell(eventId, sessionId, tableId);
-    if (!slot) {
-      return 'Not paid';
-    }
-    return `Not paid · ${this.reserveAssignmentStatusLabel(slot.assignmentStatus)}`;
-  }
-
   partySizeMinForTable(tableId: string): number {
     return this.tableById(tableId)?.minPax ?? 1;
   }
@@ -1036,6 +1132,14 @@ export class ContentPageComponent {
       return 0;
     }
     const total = tables.reduce((sum, table) => sum + table.maxPax, 0);
+    return total / tables.length;
+  }
+
+  private avgBasePrice(tables: TableAsset[]): number {
+    if (tables.length === 0) {
+      return 0;
+    }
+    const total = tables.reduce((sum, table) => sum + table.basePrice, 0);
     return total / tables.length;
   }
 

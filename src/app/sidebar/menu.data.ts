@@ -35,6 +35,16 @@ export const MENU_DATA: MenuItem[] = [
     ],
   },
   {
+    label: 'Guestlists',
+    iconComponent: IconFileAltComponent,
+    isOpen: true,
+    items: [
+      { label: 'Configuration', route: '/assets/hubs/guestlist/configuration' },
+      { label: 'Limits', route: '/assets/hubs/guestlist/limits' },
+      { label: 'Guests', route: '/assets/hubs/guestlist/guests' },
+    ],
+  },
+  {
     label: 'Events',
     iconComponent: IconListAltComponent,
     isOpen: false,

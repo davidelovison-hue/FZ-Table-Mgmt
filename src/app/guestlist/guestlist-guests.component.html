@@ -1,0 +1,226 @@
+<div class="gl-page">
+  <div class="gl-page-head">
+    <div class="gl-toolbar" role="region" aria-label="Guestlist guests tools">
+      <p class="gl-toolbar__meta">
+        <span class="gl-toolbar__label">Event</span>
+        <span class="gl-toolbar__event">{{ w.eventLabel }}</span>
+        <span class="gl-toolbar__sep" aria-hidden="true">·</span>
+        <span class="gl-toolbar__hint">Add and manage attendees on the internal channel (stored in this browser only)</span>
+      </p>
+      <div class="gl-toolbar__actions" role="toolbar" aria-label="Guestlist list actions">
+        <button type="button" class="button button--small button--secondary" (click)="w.addGuestlist()">
+          New guestlist
+        </button>
+      </div>
+    </div>
+    @if (w.persistMessage(); as msg) {
+      <p class="gl-toast" role="status">{{ msg }}</p>
+    }
+  </div>
+
+  <div class="gl-layout">
+    <aside class="gl-nav" aria-label="Guestlists in this event">
+      <h2 class="gl-nav__title">Guestlists</h2>
+      <ul class="gl-nav__list">
+        @for (g of w.guestlists(); track g.id) {
+          <li>
+            <button
+              type="button"
+              class="gl-nav__item"
+              [class.gl-nav__item--active]="g.id === w.selectedId()"
+              (click)="onSelectGuestlist(g.id)">
+              <span class="gl-nav__top">
+                <span
+                  class="gl-nav__swatch"
+                  [style.background-color]="g.listColor"
+                  [attr.title]="'List colour: ' + g.listColor"
+                  aria-hidden="true"></span>
+                <span class="gl-nav__name">{{ g.name }}</span>
+              </span>
+              <span class="gl-nav__meta">
+                @if (g.published) {
+                  <span class="gl-pill gl-pill--ok">Live</span>
+                } @else {
+                  <span class="gl-pill gl-pill--muted">Draft</span>
+                }
+              </span>
+              <span class="gl-nav__details">
+                <span class="gl-nav__detail-line">{{ w.navEntryWindowSummary(g) }}</span>
+                <span class="gl-nav__detail-line">
+                  {{ w.navGenderSummary(g) }}
+                  <span class="gl-nav__detail-sep" aria-hidden="true">·</span>
+                  {{ w.navMinAgeSummary(g) }}
+                </span>
+                <span class="gl-nav__detail-line">{{ w.navTotalCapacitySummary(g) }}</span>
+              </span>
+            </button>
+          </li>
+        }
+      </ul>
+    </aside>
+
+    @if (w.selectedGuestlist(); as gl) {
+      <section class="gl-editor" aria-label="Guests for selected guestlist">
+        <div class="gl-editor__head">
+          <div class="gl-editor__title-row">
+            <span
+              class="gl-editor__title-swatch"
+              [style.background-color]="gl.listColor"
+              [attr.title]="'List colour: ' + gl.listColor"
+              aria-hidden="true"></span>
+            <h2 class="gl-editor__title">Guests — “{{ gl.name }}”</h2>
+          </div>
+          <div class="gl-editor__head-actions">
+            @if (displayedEntries().length > 0) {
+              <button
+                type="button"
+                class="button button--small button--secondary"
+                [attr.aria-pressed]="listSortMode() === 'queue'"
+                (click)="toggleSeeOrder()">
+                {{ listSortMode() === 'queue' ? 'Latest first' : 'See order' }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="gl-grid gg-editor-stack">
+          <section class="gg-card" aria-labelledby="gg-add-heading">
+            <h2 id="gg-add-heading" class="gg-card__title">Add guest</h2>
+            <div class="gg-form-grid">
+              <label class="gg-field">
+                <span class="gg-field__label">Full name</span>
+                <input
+                  type="text"
+                  class="gg-input"
+                  autocomplete="name"
+                  [value]="draftName()"
+                  (input)="setDraftName($any($event.target).value)" />
+              </label>
+              <label class="gg-field">
+                <span class="gg-field__label">Email</span>
+                <input
+                  type="email"
+                  class="gg-input"
+                  autocomplete="email"
+                  [value]="draftEmail()"
+                  (input)="setDraftEmail($any($event.target).value)" />
+              </label>
+              <label class="gg-field">
+                <span class="gg-field__label">Phone <span class="gg-optional">(optional)</span></span>
+                <input
+                  type="tel"
+                  class="gg-input"
+                  autocomplete="tel"
+                  [value]="draftPhone()"
+                  (input)="setDraftPhone($any($event.target).value)" />
+              </label>
+              <label class="gg-field">
+                <span class="gg-field__label">Gender <span class="gg-optional">(optional)</span></span>
+                <select
+                  class="gg-input"
+                  [value]="draftGender()"
+                  (change)="setDraftGender($any($event.target).value)">
+                  @for (o of genderSelectOptions; track o.value) {
+                    <option [value]="o.value">{{ o.label }}</option>
+                  }
+                </select>
+              </label>
+              <label class="gg-field gg-field--span2">
+                <span class="gg-field__label">Referrer <span class="gg-optional">(optional)</span></span>
+                <input
+                  type="text"
+                  class="gg-input"
+                  autocomplete="off"
+                  placeholder="PR name, promoter, influencer, brand…"
+                  [value]="draftReferrer()"
+                  (input)="setDraftReferrer($any($event.target).value)" />
+              </label>
+              <label class="gg-field gg-field--span2">
+                <span class="gg-field__label">Additional notes <span class="gg-optional">(optional)</span></span>
+                <textarea
+                  class="gg-textarea"
+                  rows="2"
+                  placeholder="VIP table, plus-one name, dietary, arrival time…"
+                  [value]="draftNotes()"
+                  (input)="setDraftNotes($any($event.target).value)"></textarea>
+              </label>
+            </div>
+            <div class="gg-form-actions">
+              <button type="button" class="button button--small gl-btn-primary" (click)="addGuest()">Add guest</button>
+            </div>
+            @if (formMessage(); as msg) {
+              <p class="gg-feedback" role="status">{{ msg }}</p>
+            }
+          </section>
+
+          <section class="gg-card" aria-labelledby="gg-table-heading">
+            <div class="gg-table-head">
+              <h2 id="gg-table-heading" class="gg-card__title">On this list</h2>
+            </div>
+            @if (listSortMode() === 'queue') {
+              <p class="gg-order-hint">Signup order: oldest first. <strong>#</strong> is position on this guestlist.</p>
+            }
+            @if (displayedEntries().length === 0) {
+              <p class="gg-empty">No guests yet. Use the form above to add someone.</p>
+            } @else {
+              <div class="gg-table-wrap">
+                <table class="gg-table">
+                  <thead>
+                    <tr>
+                      @if (listSortMode() === 'queue') {
+                        <th scope="col" class="gg-col-pos">#</th>
+                      }
+                      <th scope="col">Name</th>
+                      <th scope="col">Email</th>
+                      <th scope="col">Phone</th>
+                      <th scope="col">Gender</th>
+                      <th scope="col">Referrer</th>
+                      <th scope="col">Notes</th>
+                      <th scope="col">Added</th>
+                      <th scope="col"><span class="visually-hidden">Actions</span></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (e of displayedEntries(); track e.id; let pos = $index) {
+                      <tr>
+                        @if (listSortMode() === 'queue') {
+                          <td class="gg-col-pos">{{ pos + 1 }}</td>
+                        }
+                        <td>{{ e.fullName }}</td>
+                        <td>{{ e.email }}</td>
+                        <td>{{ e.phone || '—' }}</td>
+                        <td>{{ genderLabel(e.gender) }}</td>
+                        <td
+                          class="gg-cell-notes"
+                          [attr.title]="e.referrer ? e.referrer : null">
+                          {{ e.referrer || '—' }}
+                        </td>
+                        <td
+                          class="gg-cell-notes"
+                          [attr.title]="e.additionalNotes ? e.additionalNotes : null">
+                          {{ e.additionalNotes || '—' }}
+                        </td>
+                        <td>{{ formatAddedAt(e.createdAt) }}</td>
+                        <td>
+                          <button type="button" class="gg-remove" (click)="removeGuest(e.id)">Remove</button>
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            }
+          </section>
+        </div>
+      </section>
+    } @else {
+      <div class="gl-editor gl-editor--empty">
+        @if (w.guestlists().length === 0) {
+          <p class="gl-empty">No guestlists yet. Use <strong>New guestlist</strong> above or open <strong>Configuration</strong>.</p>
+        } @else {
+          <p class="gl-empty">No guestlist selected. Choose one from the list on the left.</p>
+        }
+      </div>
+    }
+  </div>
+</div>
