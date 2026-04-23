@@ -7,11 +7,6 @@
         <span class="gl-toolbar__sep" aria-hidden="true">·</span>
         <span class="gl-toolbar__hint">Add and manage attendees on the internal channel (stored in this browser only)</span>
       </p>
-      <div class="gl-toolbar__actions" role="toolbar" aria-label="Guestlist list actions">
-        <button type="button" class="button button--small button--secondary" (click)="w.addGuestlist()">
-          New guestlist
-        </button>
-      </div>
     </div>
     @if (w.persistMessage(); as msg) {
       <p class="gl-toast" role="status">{{ msg }}</p>
@@ -216,7 +211,7 @@
     } @else {
       <div class="gl-editor gl-editor--empty">
         @if (w.guestlists().length === 0) {
-          <p class="gl-empty">No guestlists yet. Use <strong>New guestlist</strong> above or open <strong>Configuration</strong>.</p>
+          <p class="gl-empty">No guestlists yet. Add one under <strong>Configuration</strong>.</p>
         } @else {
           <p class="gl-empty">No guestlist selected. Choose one from the list on the left.</p>
         }
