@@ -1,0 +1,658 @@
+<div class="calendar-page">
+  <app-page-title title="Calendar" />
+
+  <section class="calendar-view-header">
+    <div class="calendar-view-header__filters">
+      <label class="ctl">
+        <span class="ctl__label">Event / session source</span>
+        <select [value]="eventId()" (change)="setEvent($any($event.target).value)">
+          @for (event of events; track event.id) {
+            <option [value]="event.id">{{ event.name }}</option>
+          }
+        </select>
+      </label>
+
+      <label class="ctl">
+        <span class="ctl__label">View</span>
+        <select [value]="view()" (change)="setView($any($event.target).value)">
+          <option value="single-day">Single-day</option>
+          <option value="multi-day" [disabled]="activeEvent().mode === 'one-off'">Multi-day</option>
+        </select>
+      </label>
+
+      <label class="ctl">
+        <span class="ctl__label">Zone order</span>
+        <select [value]="zoneOrder()" (change)="setZoneOrder($any($event.target).value)">
+          <option value="ops-priority">Ops priority</option>
+          <option value="alphabetical">Alphabetical</option>
+          <option value="capacity-high">Highest avg capacity first</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="calendar-view-header__toggles">
+      <fieldset class="toggles">
+        <legend>Zones</legend>
+        <label><input type="checkbox" [checked]="selectedZones().vip" (change)="toggleZoneFilter('vip')" /> VIP</label>
+        <label>
+          <input type="checkbox" [checked]="selectedZones()['main-room']" (change)="toggleZoneFilter('main-room')" />
+          Main Room
+        </label>
+        <label>
+          <input type="checkbox" [checked]="selectedZones().terrace" (change)="toggleZoneFilter('terrace')" />
+          Terrace
+        </label>
+      </fieldset>
+
+      <fieldset class="toggles">
+        <legend>Status</legend>
+        <label>
+          <input type="checkbox" [checked]="selectedStatuses().available" (change)="toggleStatusFilter('available')" />
+          Available
+        </label>
+        <label>
+          <input type="checkbox" [checked]="selectedStatuses().reserved" (change)="toggleStatusFilter('reserved')" />
+          Reserved
+        </label>
+        <label>
+          <input type="checkbox" [checked]="selectedStatuses().booked" (change)="toggleStatusFilter('booked')" />
+          Booked
+        </label>
+        <label>
+          <input type="checkbox" [checked]="selectedStatuses().blocked" (change)="toggleStatusFilter('blocked')" />
+          Blocked
+        </label>
+      </fieldset>
+    </div>
+  </section>
+
+  <section
+    class="calendar-stage"
+    [class.calendar-stage--with-panel]="sidePanelMode() !== 'closed'"
+    [class.calendar-stage--fz-booked-panel]="isBookedSidePanelMode()">
+    <div class="calendar-context">
+      <div class="calendar-context__lead">
+        <span class="calendar-context__label">Event</span>
+        <span class="calendar-context__value">{{ activeEvent().name }}</span>
+      </div>
+      <div class="calendar-context__hint">
+        @if (view() === 'single-day') {
+          One session column — switch to multi-day to compare sessions side by side.
+        } @else {
+          {{ visibleSessions().length }} sessions shown — scroll horizontally if needed.
+        }
+      </div>
+      @if (view() === 'single-day' && visibleSessions().length) {
+        <div class="single-day-nav" aria-label="Single day navigation">
+          <button type="button" class="single-day-nav__btn" [disabled]="!canGoPrevSingleDay()" (click)="goPrevSingleDay()">
+            <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+          </button>
+          <span class="single-day-nav__label">
+            {{ visibleSessions()[0].label }} · {{ visibleSessions()[0].dateLabel }}
+          </span>
+          <button type="button" class="single-day-nav__btn" [disabled]="!canGoNextSingleDay()" (click)="goNextSingleDay()">
+            <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+          </button>
+          <button type="button" class="single-day-nav__today" [disabled]="singleDaySessionIndex() === 0" (click)="goFirstSingleDay()">
+            First day
+          </button>
+        </div>
+      }
+      <div class="status-legend" aria-label="Status legend">
+        <span class="status-legend__item status-legend__item--available">Available</span>
+        <span class="status-legend__item status-legend__item--reserved">Reserved</span>
+        <span class="status-legend__item status-legend__item--booked">Booked</span>
+        <span class="status-legend__item status-legend__item--blocked">Blocked</span>
+      </div>
+    </div>
+
+    <div class="calendar-grid-shell">
+      <div class="calendar-scroll" role="region" aria-label="Table availability calendar">
+        <table class="calendar">
+          <colgroup>
+            <col class="calendar-col-resource" />
+            @for (session of visibleSessions(); track session.id) {
+              <col class="calendar-col-session" />
+            }
+          </colgroup>
+          <thead>
+            <tr>
+              <th class="calendar-corner" scope="col">
+                <span class="calendar-corner__label">Table</span>
+              </th>
+              @for (session of visibleSessions(); track session.id) {
+                <th class="calendar-session-col" scope="col">
+                  <span class="calendar-session-col__day">{{ session.label }}</span>
+                  <span class="calendar-session-col__date">{{ session.dateLabel }}</span>
+                </th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (zone of visibleZones(); track zone.key) {
+              <tr class="zone-row">
+                <th class="zone-heading" [attr.colspan]="visibleSessions().length + 1" scope="colgroup">
+                  <button type="button" class="zone-toggle" (click)="toggleZoneCollapse(zone.key)">
+                    <i
+                      class="fa-solid zone-toggle__icon"
+                      [class.fa-chevron-right]="isZoneCollapsed(zone.key)"
+                      [class.fa-chevron-down]="!isZoneCollapsed(zone.key)"></i>
+                    <span class="zone-toggle__title">{{ zone.label }}</span>
+                    <span class="zone-meta">{{ zone.tables.length }} tables</span>
+                  </button>
+                </th>
+              </tr>
+
+              @if (!isZoneCollapsed(zone.key)) {
+                @for (table of zone.tables; track table.id) {
+                  <tr class="data-row">
+                    <th class="calendar-resource-col" scope="row">
+                      <div class="resource-cell">
+                        <span class="resource-name">{{ table.name }}</span>
+                        <span class="resource-price" title="Base price">
+                          {{ formatPrice(table.basePrice) }}
+                        </span>
+                        <span class="resource-capacity" title="Capacity">
+                          <i class="fa-regular fa-user" aria-hidden="true"></i> {{ tablePaxRangeLabel(table) }}
+                        </span>
+                      </div>
+                    </th>
+                    @for (session of visibleSessions(); track session.id) {
+                      @let status = resolveCellStatus(activeEvent()!.id, session.id, table.id);
+                      @let booking = resolveBooking(activeEvent()!.id, session.id, table.id);
+                      <td class="slot-td">
+                        @if (statusVisible(status)) {
+                          <button
+                            class="slot-btn"
+                            type="button"
+                            [class.slot-btn--blocked]="status === 'blocked'"
+                            [class.slot-btn--available]="status === 'available'"
+                            [class.slot-btn--reserved]="status === 'reserved'"
+                            [class.slot-btn--booked]="status === 'booked'"
+                            [attr.aria-label]="
+                              table.name +
+                              ', ' +
+                              session.label +
+                              ' ' +
+                              session.dateLabel +
+                              ', ' +
+                              status +
+                              (booking ? ', ' + booking.guestName : '')
+                            "
+                            (click)="openCell(session, table)">
+                            @if (booking) {
+                              <span class="slot-badge slot-badge--booked">Booked</span>
+                              <span class="slot-primary">{{ booking.guestName }}</span>
+                              <span class="slot-secondary">
+                                <i class="fa-regular fa-user" aria-hidden="true"></i> {{ booking.groupSize }} ·
+                                {{ bookingPaymentTagLabel(booking) }}
+                              </span>
+                            } @else if (status === 'reserved') {
+                              <span class="slot-badge slot-badge--reserved">Reserved</span>
+                              <span class="slot-primary">{{ reservedGuestLabelForCell(activeEvent()!.id, session.id, table.id) }}</span>
+                              <span class="slot-secondary">
+                                <i class="fa-regular fa-user" aria-hidden="true"></i>
+                                {{ reservedGroupSizeForCell(activeEvent()!.id, session.id, table.id) }} ·
+                                {{ reservedCellSecondaryLabel(activeEvent()!.id, session.id, table.id) }}
+                              </span>
+                            } @else if (status === 'blocked') {
+                              <span class="slot-badge slot-badge--blocked">Blocked</span>
+                              <span class="slot-primary">Unavailable</span>
+                            } @else {
+                              <span class="slot-available-mark" aria-hidden="true"></span>
+                              <span class="slot-primary slot-primary--muted">Available</span>
+                            }
+                          </button>
+                        } @else {
+                          <div class="slot-hidden" title="Hidden by status filter">—</div>
+                        }
+                      </td>
+                    }
+                  </tr>
+                }
+              }
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    @if (sidePanelMode() !== 'closed') {
+      <aside
+        class="side-panel"
+        [class.asset-based-calendar-view__details-panel]="isBookedSidePanelMode()"
+        [class.asset-based-calendar-view__details-panel--selected]="isBookedSidePanelMode()"
+        [class.side-panel--booked-details]="isBookedDetailsMode()">
+        <button class="side-panel__close" type="button" (click)="closeSidePanel()" aria-label="Close panel">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+
+        @if (sidePanelMode() === 'available' && activeCell(); as cell) {
+          <h2>Available table</h2>
+          <p class="side-sub">Choose what to do with this available slot.</p>
+
+          <dl class="side-summary">
+            <dt>Table</dt>
+            <dd>{{ cell.table.name }}</dd>
+            <dt>Zone</dt>
+            <dd>{{ cell.table.zoneLabel }}</dd>
+            <dt>Date</dt>
+            <dd>{{ cell.session.label }} · {{ cell.session.dateLabel }}</dd>
+            <dt>Party range</dt>
+            <dd>{{ partySizeMinForTable(cell.table.id) }} - {{ partySizeMaxForTable(cell.table.id) }}</dd>
+            <dt>Base price</dt>
+            <dd>{{ formatPrice(cell.table.basePrice) }}</dd>
+          </dl>
+
+          @if (availableActionMessage(); as msg) {
+            <p class="delta-note">{{ msg }}</p>
+          }
+
+          <div class="side-actions">
+            <button class="button button--large side-btn side-btn--secondary" type="button" (click)="openCreateBookingExternalFlow()">
+              Create booking (external flow)
+            </button>
+            <button class="button button--large side-btn side-btn--danger" type="button" (click)="blockAvailableSlot()">
+              Block table
+            </button>
+          </div>
+        }
+
+        @if (sidePanelMode() === 'create' && activeCell(); as cell) {
+          <h2>Create reservation</h2>
+          <p class="side-sub">Pre-filled from calendar slot</p>
+
+          <dl class="side-summary">
+            <dt>Table</dt>
+            <dd>{{ cell.table.name }}</dd>
+            <dt>Zone</dt>
+            <dd>{{ cell.table.zoneLabel }}</dd>
+            <dt>Date</dt>
+            <dd>{{ cell.session.label }} · {{ cell.session.dateLabel }}</dd>
+          </dl>
+
+          <label class="side-field">
+            Guest / booker name
+            <input
+              type="text"
+              [value]="reservationDraft().guestName"
+              placeholder="Name"
+              (input)="setReservationName($any($event.target).value)" />
+          </label>
+
+          <label class="side-field">
+            Party size
+            <input
+              type="number"
+              [min]="partySizeMinForTable(cell.table.id)"
+              [max]="partySizeMaxForTable(cell.table.id)"
+              [value]="reservationDraft().groupSize"
+              (input)="setReservationGroupSize($any($event.target).value)" />
+            <small class="side-help">
+              Min {{ partySizeMinForTable(cell.table.id) }} · Max {{ partySizeMaxForTable(cell.table.id) }}
+            </small>
+          </label>
+
+          <button
+            class="button button--large side-btn side-btn--primary"
+            type="button"
+            [disabled]="!canConfirmReservation()"
+            (click)="confirmCreateReservation()">
+            Confirm booking and return to calendar
+          </button>
+        }
+
+        @if (sidePanelMode() === 'reserved' && activeCell(); as cell) {
+          <div class="booked-slot-details">
+            <header class="fz-booked-drawer__header">
+              <div class="fz-booked-drawer__title-row">
+                <h2 class="fz-booked-drawer__name">{{ reserveGuestForActiveCell() }}</h2>
+                <div class="fz-booked-drawer__badges fz-booked-drawer__badges--reserved">
+                  <div class="fz-booked-drawer__badges-row">
+                    <span class="fz-booked-drawer__status-badge fz-booked-drawer__status-badge--reserved-main">Reserved</span>
+                    <span class="fz-booked-drawer__status-badge fz-booked-drawer__status-badge--unpaid">Not paid</span>
+                  </div>
+                  <div class="fz-booked-drawer__badges-row fz-booked-drawer__badges-row--bottom">
+                    <span
+                      class="fz-booked-drawer__status-badge fz-booked-drawer__status-badge--assignment"
+                      [class.fz-booked-drawer__status-badge--pending]="reserveAssignmentIsPending(reserveAssignmentStatusForActiveCell())">
+                      @if (reserveAssignmentIsPending(reserveAssignmentStatusForActiveCell())) {
+                        <i class="fa-regular fa-clock" aria-hidden="true"></i>
+                      }
+                      {{ reserveAssignmentStatusLabel(reserveAssignmentStatusForActiveCell()) }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <p class="fz-booked-drawer__order-id">Order ID - {{ reserveOrderRefForActiveCell() }}</p>
+            </header>
+
+            <div class="booked-slot-details__info-grid fz-booked-drawer__info-grid">
+              <div class="fz-info-tile">
+                <span class="fz-info-tile__icon" aria-hidden="true"><i class="fa-regular fa-clock"></i></span>
+                <div class="fz-info-tile__body">
+                  <span class="fz-info-tile__value">10:00 AM - 8:00 PM (10h)</span>
+                  <span class="fz-info-tile__label">Total booking time</span>
+                </div>
+              </div>
+              <div class="fz-info-tile">
+                <span class="fz-info-tile__icon" aria-hidden="true"><i class="fa-solid fa-users"></i></span>
+                <div class="fz-info-tile__body">
+                  <span class="fz-info-tile__value">{{ reserveGroupSizeForActiveCell() }}</span>
+                  <span class="fz-info-tile__label">Group size</span>
+                </div>
+              </div>
+              <div class="fz-info-tile">
+                <span class="fz-info-tile__icon" aria-hidden="true"><i class="fa-solid fa-tag"></i></span>
+                <div class="fz-info-tile__body">
+                  <span class="fz-info-tile__value">{{ formatPrice(reserveEstimatedPriceForActiveCell()) }}</span>
+                  <span class="fz-info-tile__label">Estimated price</span>
+                </div>
+              </div>
+              <div class="fz-info-tile">
+                <span class="fz-info-tile__icon" aria-hidden="true"><i class="fa-solid fa-user"></i></span>
+                <div class="fz-info-tile__body">
+                  <span class="fz-info-tile__value">{{ reserveGuestForActiveCell() }}</span>
+                  <span class="fz-info-tile__label">Booker name</span>
+                </div>
+              </div>
+              <div class="fz-info-tile">
+                <span class="fz-info-tile__icon" aria-hidden="true"><i class="fa-regular fa-envelope"></i></span>
+                <div class="fz-info-tile__body">
+                  <span class="fz-info-tile__value">{{ reserveEmailForActiveCell() }}</span>
+                  <span class="fz-info-tile__label">Email</span>
+                </div>
+              </div>
+              <div class="fz-info-tile">
+                <span class="fz-info-tile__icon" aria-hidden="true"><i class="fa-solid fa-ticket"></i></span>
+                <div class="fz-info-tile__body">
+                  <span class="fz-info-tile__value">{{ reserveOrderRefForActiveCell() }}</span>
+                  <span class="fz-info-tile__label">Reservation ref</span>
+                </div>
+              </div>
+              <div class="fz-info-tile">
+                <span class="fz-info-tile__icon" aria-hidden="true"><i class="fa-solid fa-table-cells-large"></i></span>
+                <div class="fz-info-tile__body">
+                  <span class="fz-info-tile__value">{{ reserveAssignmentStatusLabel(reserveAssignmentStatusForActiveCell()) }}</span>
+                  <span class="fz-info-tile__label">Assignment status</span>
+                </div>
+              </div>
+            </div>
+
+            <section class="fz-booked-drawer__asset" aria-label="Asset reserved">
+              <div class="fz-booked-drawer__asset-bar">Asset reserved</div>
+              <div class="fz-booked-drawer__asset-card">
+                <p class="fz-booked-drawer__asset-title">{{ cell.table.name }}</p>
+                <p class="fz-booked-drawer__asset-time">{{ cell.session.label }} · {{ cell.session.dateLabel }}</p>
+              </div>
+            </section>
+
+            @if (availableActionMessage(); as msg) {
+              <p class="delta-note">{{ msg }}</p>
+            }
+
+            <div class="fz-booked-drawer__actions">
+              @if (reserveAssignmentIsPending(reserveAssignmentStatusForActiveCell())) {
+                <button
+                  class="button fz-booked-drawer__btn fz-booked-drawer__btn--primary"
+                  type="button"
+                  (click)="confirmReservedAssignment()">
+                  Confirm assignment
+                </button>
+              }
+              <button class="button fz-booked-drawer__btn fz-booked-drawer__btn--secondary" type="button" (click)="openReservedMove()">
+                Move table
+              </button>
+              <button class="button fz-booked-drawer__btn fz-booked-drawer__btn--secondary" type="button" (click)="openViewReservationExternalFlow()">
+                View reservation
+              </button>
+            </div>
+          </div>
+        }
+
+        @if (sidePanelMode() === 'reserved-move' && activeCell(); as cell) {
+          <div class="booked-slot-details">
+            <h2>Move reserved table</h2>
+            <p class="side-sub">Choose another compatible available table before confirmation.</p>
+
+            @for (zone of availableTablesForReservedMove(); track zone.key) {
+              <section class="move-zone">
+                <h3>{{ zone.label }}</h3>
+                @for (table of zone.tables; track table.id) {
+                  <label class="move-option">
+                    <input
+                      type="radio"
+                      name="reserved-move-table"
+                      [value]="table.id"
+                      [checked]="reservedMoveTableId() === table.id"
+                      (change)="setReservedMoveTable(table.id)" />
+                    <span>{{ table.name }} · pax {{ tablePaxRangeLabel(table) }}</span>
+                  </label>
+                }
+              </section>
+            }
+
+            <div class="fz-booked-drawer__actions">
+              <button
+                class="button fz-booked-drawer__btn fz-booked-drawer__btn--primary"
+                type="button"
+                [disabled]="!canConfirmReservedMove()"
+                (click)="confirmReservedMove()">
+                Confirm move
+              </button>
+              <button class="button fz-booked-drawer__btn fz-booked-drawer__btn--secondary" type="button" (click)="backToReservedPanel()">
+                Back
+              </button>
+            </div>
+          </div>
+        }
+
+        @if (sidePanelMode() === 'blocked' && activeCell(); as cell) {
+          <h2>Blocked slot</h2>
+          <p class="side-sub">Blocked slots cannot be booked until they are unblocked.</p>
+
+          <dl class="side-summary">
+            <dt>Table</dt>
+            <dd>{{ cell.table.name }}</dd>
+            <dt>Zone</dt>
+            <dd>{{ cell.table.zoneLabel }}</dd>
+            <dt>Date</dt>
+            <dd>{{ cell.session.label }} · {{ cell.session.dateLabel }}</dd>
+            <dt>Reason</dt>
+            <dd>{{ blockedReasonForActiveCell() }}</dd>
+          </dl>
+
+          @if (availableActionMessage(); as msg) {
+            <p class="delta-note">{{ msg }}</p>
+          }
+
+          <div class="side-actions">
+            <button class="button button--large side-btn side-btn--secondary" type="button" (click)="openCreateBookingExternalFlow()">
+              Start reservation (external flow)
+            </button>
+            <button class="button button--large side-btn side-btn--primary" type="button" (click)="unblockSlot()">
+              Unblock table
+            </button>
+          </div>
+        }
+
+        @if (activeBooking(); as booking) {
+          @if (isBookedSidePanelMode()) {
+            <div class="booked-slot-details">
+              @if (sidePanelMode() === 'details') {
+                <header class="fz-booked-drawer__header">
+                  <div class="fz-booked-drawer__title-row">
+                    <h2 class="fz-booked-drawer__name">{{ booking.guestName }}</h2>
+                    <span class="fz-booked-drawer__badges">
+                      <span class="fz-booked-drawer__status-badge fz-booked-drawer__status-badge--main">Booked</span>
+                      <span
+                        class="fz-booked-drawer__status-badge fz-booked-drawer__status-badge--paid"
+                        [class.fz-booked-drawer__status-badge--unpaid]="!bookingIsPaid(booking)">
+                        {{ bookingPaymentTagLabel(booking) }}
+                      </span>
+                    </span>
+                  </div>
+                  <p class="fz-booked-drawer__order-id">{{ orderIdLine(booking) }}</p>
+                </header>
+
+                <div class="booked-slot-details__info-grid fz-booked-drawer__info-grid">
+                  <div class="fz-info-tile">
+                    <span class="fz-info-tile__icon" aria-hidden="true"><i class="fa-regular fa-clock"></i></span>
+                    <div class="fz-info-tile__body">
+                      <span class="fz-info-tile__value">{{ timeRangeForBooking(booking) }}</span>
+                      <span class="fz-info-tile__label">Total booking time</span>
+                    </div>
+                  </div>
+                  <div class="fz-info-tile">
+                    <span class="fz-info-tile__icon" aria-hidden="true"><i class="fa-solid fa-users"></i></span>
+                    <div class="fz-info-tile__body">
+                      <span class="fz-info-tile__value">{{ booking.groupSize }}</span>
+                      <span class="fz-info-tile__label">Group size</span>
+                    </div>
+                  </div>
+                  <div class="fz-info-tile">
+                    <span class="fz-info-tile__icon" aria-hidden="true"><i class="fa-solid fa-tag"></i></span>
+                    <div class="fz-info-tile__body">
+                      <span class="fz-info-tile__value">{{ formatPrice(booking.totalPrice) }}</span>
+                      <span class="fz-info-tile__label">Total price</span>
+                    </div>
+                  </div>
+                  <div class="fz-info-tile">
+                    <span class="fz-info-tile__icon" aria-hidden="true"><i class="fa-regular fa-envelope"></i></span>
+                    <div class="fz-info-tile__body">
+                      <span class="fz-info-tile__value">{{ emailForBooking(booking) }}</span>
+                      <span class="fz-info-tile__label">Email</span>
+                    </div>
+                  </div>
+                  <div class="fz-info-tile">
+                    <span class="fz-info-tile__icon" aria-hidden="true"><i class="fa-solid fa-phone"></i></span>
+                    <div class="fz-info-tile__body">
+                      <span class="fz-info-tile__value">{{ phoneForBooking(booking) }}</span>
+                      <span class="fz-info-tile__label">Phone number</span>
+                    </div>
+                  </div>
+                  <div class="fz-info-tile">
+                    <span class="fz-info-tile__icon" aria-hidden="true"><i class="fa-solid fa-globe"></i></span>
+                    <div class="fz-info-tile__body">
+                      <span class="fz-info-tile__value">{{ bookingFromForBooking(booking) }}</span>
+                      <span class="fz-info-tile__label">Booking from</span>
+                    </div>
+                  </div>
+                  <div class="fz-info-tile">
+                    <span class="fz-info-tile__icon" aria-hidden="true"><i class="fa-solid fa-credit-card"></i></span>
+                    <div class="fz-info-tile__body">
+                      <span class="fz-info-tile__value">{{ bookingPaymentTagLabel(booking) }}</span>
+                      <span class="fz-info-tile__label">Payment status</span>
+                    </div>
+                  </div>
+                </div>
+
+                <section class="fz-booked-drawer__asset" aria-label="Asset booked">
+                  <div class="fz-booked-drawer__asset-bar">Asset booked</div>
+                  <div class="fz-booked-drawer__asset-card">
+                    <button type="button" class="fz-booked-drawer__asset-edit" aria-label="Edit asset" (click)="openModifyBooking()">
+                      <i class="fa-solid fa-pencil"></i>
+                    </button>
+                    <p class="fz-booked-drawer__asset-title">{{ tableById(booking.tableId)?.name }}</p>
+                    <p class="fz-booked-drawer__asset-time">{{ timeRangeForBooking(booking) }}</p>
+                  </div>
+                </section>
+
+                <div class="fz-booked-drawer__actions">
+                  <button class="button fz-booked-drawer__btn fz-booked-drawer__btn--secondary" type="button" (click)="openModifyBooking()">
+                    Edit order
+                  </button>
+                  <button class="button fz-booked-drawer__btn fz-booked-drawer__btn--primary" type="button" (click)="openMoveTable()">
+                    Move table
+                  </button>
+                </div>
+
+              }
+
+              @if (sidePanelMode() === 'move') {
+                <h2>Move table</h2>
+                <p class="side-sub">Only available tables can be selected</p>
+                @for (zone of availableTablesForMove(); track zone.key) {
+                  <section class="move-zone">
+                    <h3>{{ zone.label }}</h3>
+                    @for (table of zone.tables; track table.id) {
+                      <label class="move-option">
+                        <input
+                          type="radio"
+                          name="move-table"
+                          [value]="table.id"
+                          [checked]="modificationDraft().tableId === table.id"
+                          (change)="setModificationTable(table.id)" />
+                        <span>{{ table.name }} · pax {{ tablePaxRangeLabel(table) }}</span>
+                      </label>
+                    }
+                  </section>
+                }
+                <button
+                  class="button button--large side-btn side-btn--primary"
+                  type="button"
+                  [disabled]="!canConfirmMoveTable()"
+                  (click)="confirmMoveTable()">
+                  Confirm table reassignment
+                </button>
+              }
+
+              @if (sidePanelMode() === 'modify') {
+                <h2>Modify booking</h2>
+                <p class="side-sub">Table reassignment, upgrade/downgrade and group size changes</p>
+
+                <label class="side-field">
+                  New table
+                  <select [value]="modificationDraft().tableId" (change)="setModificationTable($any($event.target).value)">
+                    @for (zone of availableTablesForMove(); track zone.key) {
+                      <optgroup [label]="zone.label">
+                        @for (table of zone.tables; track table.id) {
+                          <option [value]="table.id">{{ table.name }} · {{ formatPrice(table.basePrice) }}</option>
+                        }
+                      </optgroup>
+                    }
+                  </select>
+                </label>
+
+                <label class="side-field">
+                  New group size
+                  <input
+                    type="number"
+                    [min]="partySizeMinForTable(modificationDraft().tableId)"
+                    [max]="partySizeMaxForTable(modificationDraft().tableId)"
+                    [value]="modificationDraft().groupSize"
+                    (input)="setModificationGroupSize($any($event.target).value)" />
+                  <small class="side-help">
+                    Min {{ partySizeMinForTable(modificationDraft().tableId) }} · Max
+                    {{ partySizeMaxForTable(modificationDraft().tableId) }}
+                  </small>
+                </label>
+
+                <dl class="side-summary side-summary--delta booked-slot-details__info-grid">
+                  <dt>Current total</dt>
+                  <dd>{{ formatPrice(booking.totalPrice) }}</dd>
+                  <dt>Delta</dt>
+                  <dd [class.delta-up]="currentModificationDelta() > 0" [class.delta-down]="currentModificationDelta() < 0">
+                    {{ currentModificationDelta() >= 0 ? '+' : '' }}{{ formatPrice(currentModificationDelta()) }}
+                  </dd>
+                </dl>
+
+                @if (currentModificationDelta() > 0) {
+                  <p class="delta-note">Additional payment required (out of scope in this prototype flow).</p>
+                }
+
+                <button
+                  class="button button--large side-btn side-btn--primary"
+                  type="button"
+                  [disabled]="!canConfirmBookingModification()"
+                  (click)="confirmBookingModification()">
+                  Confirm booking update
+                </button>
+              }
+            </div>
+          }
+        }
+      </aside>
+    }
+  </section>
+</div>

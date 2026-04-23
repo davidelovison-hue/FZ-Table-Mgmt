@@ -1,0 +1,12 @@
+<app-header (toggleSidebar)="toggleSidebar()" />
+
+<div class="bl-main bl-main--logged">
+  <app-sidebar [isOpen]="sidebarOpen" />
+
+  <div class="bl-main__content" [class.bl-main__content--sidebar-open]="sidebarOpen">
+    <div class="bl-main__page">
+      <router-outlet />
+    </div>
+    <app-footer />
+  </div>
+</div>

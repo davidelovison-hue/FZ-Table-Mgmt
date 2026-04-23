@@ -1,0 +1,42 @@
+:host { display: flex; align-items: center; }
+
+.oss-shift-widget {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #fff;
+  border-radius: .5rem;
+  box-shadow: 0 .125rem .5rem #18364214;
+  min-width: 20rem;
+  height: 3rem;
+  overflow: hidden;
+}
+
+.oss-shift-widget__icon {
+  background: #f2f3f3;
+  min-width: 10rem;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .75rem;
+  height: 100%;
+  color: #000;
+}
+
+.oss-shift-widget__time {
+  font: 400 .875rem/1.25rem Montserrat, sans-serif;
+}
+
+.oss-shift-widget__content {
+  display: flex;
+  justify-content: space-around;
+  gap: 1rem;
+  align-items: center;
+  padding: 1rem;
+}
+
+.oss-shift-widget__content .button {
+  border-color: #000 !important;
+  color: #000 !important;
+}

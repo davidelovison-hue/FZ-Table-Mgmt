@@ -1,0 +1,16 @@
+{
+  "name": "design-token-transformer",
+  "version": "0.6.0",
+  "description": "Base repo to transform json design tokens from the figma design token plugin via amazon style directory.",
+  "scripts": {
+    "build:tokens": "node ./scripts/tokens.js",
+    "build:web": "node ./src/web/build.js",
+    "build:android": "node ./src/android/build.js",
+    "build:ios": "node ./src/ios/build.js"
+  },
+  "dependencies": {
+    "@ctrl/tinycolor": "^3.4.0",
+    "style-dictionary": "^3.7.2",
+    "style-dictionary-utils": "^1.1.0"
+  }
+}

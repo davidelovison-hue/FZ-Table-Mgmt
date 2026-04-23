@@ -1,0 +1,55 @@
+:host { display: flex; align-items: center; }
+
+.menu-actions { position: relative; }
+
+.menu-actions__button {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  color: #fff;
+  text-decoration: none;
+  font: 400 1rem/1.5rem Montserrat, sans-serif;
+  background: transparent;
+  padding: 0;
+  border: 0;
+  outline: none;
+  cursor: pointer;
+}
+
+.menu-actions__user {
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-actions__user-name {
+  display: none;
+}
+@media (min-width: 1200px) {
+  .menu-actions__user-name {
+    display: initial;
+    max-width: 11.25rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+}
+
+.menu-actions__user-organization {
+  display: none;
+  font: 400 .75rem/1rem Montserrat, sans-serif;
+  color: #a7b2ba;
+  text-align: end;
+}
+@media (min-width: 1200px) {
+  .menu-actions__user-organization {
+    display: initial;
+    max-width: 11.25rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+}
+
+.menu-actions__icon {
+  flex-shrink: 0;
+}

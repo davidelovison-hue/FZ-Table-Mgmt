@@ -1,0 +1,25 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  background: #06232c;
+}
+
+.bl-main--logged {
+  background: #06232c;
+}
+
+section, .bl-main__content {
+  transition: margin .26s cubic-bezier(.1, 0, 0, 1);
+}
+
+.bl-main__content {
+  padding-block-start: 3.5rem;
+}
+@media (min-width: 1200px) {
+  .bl-main__content { padding-block-start: 4.5rem; }
+}
+
+.bl-main__page {
+  min-height: calc(100vh - 4.5rem - 200px);
+  background: #f2f3f3;
+}

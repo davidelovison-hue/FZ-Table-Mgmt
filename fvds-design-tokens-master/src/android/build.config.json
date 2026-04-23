@@ -1,0 +1,59 @@
+{
+  "include": [
+    "build/tokens/primitives/**/*.json",
+    "build/tokens/semantic/**/*.json",
+    "build/tokens/components/**/*.json"
+  ],
+  "source": ["build/tokens/android/**/*.json"],
+  "platforms": {
+      "android/XML/colors": {
+      "transformGroup": "custom/android/xml",
+      "buildPath": "build/android/XML/",
+      "files": [
+        {
+          "destination": "color_palette.xml",
+          "format": "android/resources",
+          "filter": {
+            "attributes": { "type": "palette" }
+          }
+        },
+        {
+          "destination": "color_semantics.xml",
+          "format": "android/resources",
+          "filter": "colorExceptPalette"
+        }
+      ],
+      "options": {
+        "showFileHeader": true,
+        "outputReferences": true
+      }
+    },
+    "android/compose/colors": {
+      "transformGroup": "custom/android/compose",
+      "buildPath": "build/android/compose/",
+      "files": [
+        {
+          "destination": "Palette.kt",
+          "format": "custom/compose/colorPalette",
+          "filter": {
+            "attributes": { "type": "palette" }
+          }
+        },
+        {
+          "destination": "IgniteColors.kt",
+          "format": "custom/compose/colorSemantics",
+          "filter": "colorExceptPalette"
+        },
+        {
+          "destination": "IgniteButtons.kt",
+          "format": "custom/compose/colorButtons",
+          "filter": {
+            "attributes": {
+              "category": "button"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

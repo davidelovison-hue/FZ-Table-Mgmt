@@ -1,0 +1,38 @@
+:host {
+  display: block;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+}
+
+.search-bar__input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .5rem .75rem;
+  border: 1px solid #ccd2d8;
+  border-radius: .5rem;
+  background-color: #fff;
+  width: 100%;
+  max-width: 24rem;
+}
+
+.search-bar__icon {
+  color: #a7b2ba;
+  font-size: .875rem;
+}
+
+.search-bar__input {
+  border: none;
+  outline: none;
+  font: 400 .875rem/1.25rem Montserrat, sans-serif;
+  color: #212529;
+  width: 100%;
+  background: transparent;
+}
+
+.search-bar__input::placeholder {
+  color: #a7b2ba;
+}

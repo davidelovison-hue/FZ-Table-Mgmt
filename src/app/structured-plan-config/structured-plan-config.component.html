@@ -1,0 +1,507 @@
+<div class="spc">
+  <header class="spc__masthead">
+    <div class="spc__masthead-head">
+      <div class="spc__masthead-lead">
+        <h1 class="spc__masthead-title">Structured plan configuration</h1>
+        <p class="spc__masthead-sub">
+          Single-plan mock: L1 → L2 → L3, session types on L3, translations, duplicate. Edits stay in memory until you
+          save; persistence is local to this browser only (not a FeverZone publish).
+        </p>
+      </div>
+      <div class="spc__masthead-status" aria-live="polite">
+        @if (isDirty()) {
+          <span class="spc__pill spc__pill--warn">Unsaved changes</span>
+          <span class="spc__pill-meta">Use Save configuration or Discard.</span>
+        } @else {
+          <span class="spc__pill spc__pill--ok">Saved</span>
+          <span class="spc__pill-meta">Matches last snapshot.</span>
+        }
+      </div>
+    </div>
+
+    <div class="spc__masthead-grid">
+      <div class="spc__masthead-actions">
+        <div class="spc__masthead-actions-row" role="toolbar" aria-label="Editor actions">
+          <button type="button" class="button button--small spc__btn-primary" (click)="addL1()">+ L1 category</button>
+          <button
+            type="button"
+            class="button button--small spc__btn-primary spc__btn-save"
+            [disabled]="!isDirty()"
+            (click)="saveConfiguration()">
+            Save configuration
+          </button>
+          <button
+            type="button"
+            class="button button--small button--sharp-secondary-contrast"
+            [disabled]="!isDirty()"
+            (click)="discardUnsavedChanges()">
+            Discard
+          </button>
+          <button type="button" class="button button--small button--sharp-secondary-contrast" (click)="resetDemo()">
+            Reset demo
+          </button>
+          <button type="button" class="button button--small button--sharp-secondary-contrast" (click)="toggleShowPreview()">
+            {{ showPreview() ? 'Hide' : 'Show' }} preview
+          </button>
+        </div>
+        @if (persistMessage(); as msg) {
+          <p class="spc__toast" role="status">{{ msg }}</p>
+        }
+      </div>
+
+      <div class="spc__masthead-options" aria-label="Plan behaviour">
+        <div class="spc__options-group">
+          <span class="spc__options-kicker">Plan</span>
+          <label class="spc__check spc__check--inline">
+            <input
+              type="checkbox"
+              [checked]="config().structuredPlanViewEnabled"
+              (change)="setStructuredEnabled($any($event.target).checked)" />
+            <span>Structured plan view</span>
+          </label>
+        </div>
+        <fieldset class="spc__fieldset spc__fieldset--aside">
+          <legend class="spc__legend">Navigation</legend>
+          <label class="spc__radio">
+            <input
+              type="radio"
+              name="navMode"
+              value="tabs"
+              [checked]="config().navigationMode === 'tabs'"
+              (change)="setNavigationMode('tabs')" />
+            <span>Tabs (MVP)</span>
+          </label>
+          <label class="spc__radio">
+            <input
+              type="radio"
+              name="navMode"
+              value="stepper"
+              [checked]="config().navigationMode === 'stepper'"
+              (change)="setNavigationMode('stepper')" />
+            <span>Stepper</span>
+          </label>
+        </fieldset>
+      </div>
+    </div>
+  </header>
+
+  @let st = sessionLinkSummary();
+  <section
+    class="spc__st-summary"
+    [class.spc__st-summary--warn]="st.hasLinkageWarning"
+    [attr.aria-label]="
+      st.linkedFromMockCount +
+      ' of ' +
+      st.mockCatalogSize +
+      ' mock catalogue session types linked on L3 categories' +
+      (st.hasLinkageWarning ? '. Warning: missing links or unknown ids.' : '')
+    ">
+    <h2 class="visually-hidden">Session types linked</h2>
+    <div
+      class="spc__st-book"
+      title="Distinct mock catalogue session types used on at least one L3, out of mock catalogue size">
+      <span class="spc__st-book-label">Session types linked</span>
+      <span class="spc__st-book-nums">
+        <span class="spc__st-book-n">{{ st.linkedFromMockCount }}</span>
+        <span class="spc__st-book-sep">/</span>
+        <span class="spc__st-book-total">{{ st.mockCatalogSize }}</span>
+      </span>
+    </div>
+  </section>
+
+  @if (warnings().length) {
+    <section class="spc__warnings" aria-label="Configuration warnings">
+      <strong>Warnings (non-blocking)</strong>
+      <ul>
+        @for (w of warnings(); track w) {
+          <li>{{ w }}</li>
+        }
+      </ul>
+    </section>
+  }
+
+  <div class="spc__split">
+    <section class="spc__panel spc__tree" aria-label="Category tree">
+      <h2 class="spc__panel-title">Tree</h2>
+      @if (sortRows(config().l1Categories).length === 0) {
+        <p class="spc__muted">No L1 categories. Add one to start.</p>
+      }
+      <ul class="spc__tree-list">
+        @for (l1 of sortRows(config().l1Categories); track l1.id) {
+          <li class="spc__tree-l1">
+            <div
+              class="spc__tree-row"
+              [class.spc__tree-row--active]="isL1Selected(l1.id)"
+              (click)="selectL1(l1.id); $event.stopPropagation()">
+              <span class="spc__badge spc__badge--l1">L1</span>
+              <span class="spc__tree-title">{{ l1.externalTitle }}</span>
+              <span class="spc__tree-meta">{{ l1.internalLabel }}</span>
+              <span class="spc__tree-actions">
+                <button
+                  type="button"
+                  class="spc__icon-btn"
+                  title="Move up"
+                  (click)="moveL1(l1.id, -1); $event.stopPropagation()">↑</button>
+                <button
+                  type="button"
+                  class="spc__icon-btn"
+                  title="Move down"
+                  (click)="moveL1(l1.id, 1); $event.stopPropagation()">↓</button>
+                <button
+                  type="button"
+                  class="spc__icon-btn spc__icon-btn--accent"
+                  title="Add L2 under this L1"
+                  (click)="addL2(l1.id); $event.stopPropagation()">+L2</button>
+              </span>
+            </div>
+            <ul class="spc__tree-list spc__tree-list--nested">
+              @for (l2 of sortRows(l1.children); track l2.id) {
+                <li class="spc__tree-l2">
+                  <div
+                    class="spc__tree-row spc__tree-row--l2"
+                    [class.spc__tree-row--active]="isL2Selected(l1.id, l2.id)"
+                    (click)="selectL2(l1.id, l2.id); $event.stopPropagation()">
+                    <span class="spc__badge spc__badge--l2">L2</span>
+                    <span class="spc__tree-title">{{ l2.externalTitle }}</span>
+                    <span class="spc__tree-meta">{{ l2.internalLabel }}</span>
+                    <span class="spc__tree-actions">
+                      <button
+                        type="button"
+                        class="spc__icon-btn"
+                        title="Move up"
+                        (click)="moveL2(l1.id, l2.id, -1); $event.stopPropagation()">↑</button>
+                      <button
+                        type="button"
+                        class="spc__icon-btn"
+                        title="Move down"
+                        (click)="moveL2(l1.id, l2.id, 1); $event.stopPropagation()">↓</button>
+                      <button
+                        type="button"
+                        class="spc__icon-btn spc__icon-btn--accent"
+                        title="Add L3 under this L2"
+                        (click)="addL3(l1.id, l2.id); $event.stopPropagation()">+L3</button>
+                    </span>
+                  </div>
+                  <ul class="spc__tree-list spc__tree-list--nested">
+                    @for (l3 of sortRows(l2.children); track l3.id) {
+                      <li>
+                        <div
+                          class="spc__tree-row spc__tree-row--l3"
+                          [class.spc__tree-row--active]="isL3Selected(l1.id, l2.id, l3.id)"
+                          (click)="selectL3(l1.id, l2.id, l3.id); $event.stopPropagation()">
+                          <span class="spc__badge spc__badge--l3">L3</span>
+                          <span class="spc__tree-title">{{ l3.externalTitle }}</span>
+                          <span class="spc__tree-meta">{{ l3.sessionTypeIds.length }} session type(s)</span>
+                          <span class="spc__tree-actions">
+                            <button
+                              type="button"
+                              class="spc__icon-btn"
+                              title="Move up"
+                              (click)="moveL3(l1.id, l2.id, l3.id, -1); $event.stopPropagation()">↑</button>
+                            <button
+                              type="button"
+                              class="spc__icon-btn"
+                              title="Move down"
+                              (click)="moveL3(l1.id, l2.id, l3.id, 1); $event.stopPropagation()">↓</button>
+                          </span>
+                        </div>
+                      </li>
+                    }
+                  </ul>
+                </li>
+              }
+            </ul>
+          </li>
+        }
+      </ul>
+    </section>
+
+    <section class="spc__panel spc__inspector" aria-label="Selected category">
+      <h2 class="spc__panel-title">Inspector</h2>
+      @if (selectedNodeFields(); as node) {
+        <p class="spc__level-pill">{{ selectedLevelLabel() }}</p>
+        <p class="spc__muted">Position (order): {{ node.position }} — use ↑↓ in tree to reorder siblings.</p>
+        <p class="spc__prd-hint">{{ prdFieldScopeHint() }}</p>
+
+        <label class="spc__field">
+          <span class="spc__label">Internal label</span>
+          <input
+            class="spc__input"
+            type="text"
+            [value]="node.internalLabel"
+            (input)="updateSelectedField('internalLabel', $any($event.target).value)" />
+        </label>
+        <label class="spc__field">
+          <span class="spc__label">External title</span>
+          <input
+            class="spc__input"
+            type="text"
+            [value]="node.externalTitle"
+            (input)="updateSelectedField('externalTitle', $any($event.target).value)" />
+        </label>
+        @if (inspectorAllowsMedia()) {
+          <label class="spc__field">
+            <span class="spc__label">Image URL (optional, L3 only)</span>
+            <input
+              class="spc__input"
+              type="url"
+              [value]="node.imageUrl"
+              (input)="updateSelectedField('imageUrl', $any($event.target).value)" />
+          </label>
+        }
+        @if (inspectorAllowsDescription()) {
+          <label class="spc__field">
+            <span class="spc__label">Description / "more info" (optional)</span>
+            <textarea
+              class="spc__textarea"
+              rows="3"
+              [value]="node.description"
+              (input)="updateSelectedField('description', $any($event.target).value)"></textarea>
+          </label>
+        }
+
+        <div class="spc__translations">
+          <h3 class="spc__subhead">Translations</h3>
+          <p class="spc__muted spc__muted--tight">
+            Default language is the external title / description above. Each row is one locale (BCP-47 style, e.g.
+            <code class="spc__code">es</code>, <code class="spc__code">pt-BR</code>).
+          </p>
+          <div class="spc__locale-chips">
+            @for (loc of suggestedLocalesToAdd(); track loc) {
+              <button type="button" class="spc__chip" (click)="addTranslation(loc)">+ {{ loc }}</button>
+            }
+          </div>
+          <div class="spc__locale-custom">
+            <input
+              #customLoc
+              class="spc__input spc__input--grow"
+              type="text"
+              placeholder="Custom locale (e.g. pt-BR)"
+              (keydown.enter)="addTranslation(customLoc.value); customLoc.value = ''" />
+            <button
+              type="button"
+              class="button button--small button--sharp-secondary-contrast"
+              (click)="addTranslation(customLoc.value); customLoc.value = ''">
+              Add locale
+            </button>
+          </div>
+          @for (t of selectedTranslations(); track t.id) {
+            <fieldset class="spc__trans-card">
+              <legend class="visually-hidden">Translation {{ t.locale }}</legend>
+              <div class="spc__trans-card-head">
+                <label class="spc__field spc__field--inline spc__field--grow">
+                  <span class="spc__label">Locale</span>
+                  <input
+                    class="spc__input"
+                    type="text"
+                    [value]="t.locale"
+                    (blur)="updateTranslationField(t.id, 'locale', $any($event.target).value)" />
+                </label>
+                <button
+                  type="button"
+                  class="button button--small spc__btn-danger spc__btn-danger--ghost"
+                  (click)="removeTranslation(t.id)">
+                  Remove
+                </button>
+              </div>
+              <label class="spc__field">
+                <span class="spc__label">External title (this locale)</span>
+                <input
+                  class="spc__input"
+                  type="text"
+                  [value]="t.externalTitle"
+                  (input)="updateTranslationField(t.id, 'externalTitle', $any($event.target).value)" />
+              </label>
+              @if (selection()?.level !== 'l1') {
+                <label class="spc__field">
+                  <span class="spc__label">Description (this locale)</span>
+                  <textarea
+                    class="spc__textarea"
+                    rows="2"
+                    [value]="t.description"
+                    (input)="updateTranslationField(t.id, 'description', $any($event.target).value)"></textarea>
+                </label>
+              }
+            </fieldset>
+          }
+        </div>
+
+        @if (selection()?.level === 'l3') {
+          <div class="spc__session-block">
+            <h3 class="spc__subhead">Session types (mock catalogue)</h3>
+            <input
+              class="spc__input"
+              type="search"
+              placeholder="Filter by name or id…"
+              [value]="sessionSearch()"
+              (input)="setSessionSearch($any($event.target).value)" />
+            <ul class="spc__session-list">
+              @for (st of filteredSessionTypes(); track st.id) {
+                <li>
+                  <label class="spc__session-row">
+                    <input
+                      type="checkbox"
+                      [checked]="sessionTypeSelected(st.id)"
+                      (change)="toggleSessionTypeOnSelected(st.id)" />
+                    <span class="spc__session-name">{{ st.name }}</span>
+                    <code class="spc__code">{{ st.id }}</code>
+                  </label>
+                </li>
+              }
+            </ul>
+          </div>
+        }
+
+        <div class="spc__actions-row spc__actions-row--duplicate-delete">
+          <button type="button" class="button button--small button--sharp-secondary-contrast" (click)="duplicateSelected()">
+            Duplicate category
+          </button>
+          <button type="button" class="button button--small spc__btn-danger" (click)="deleteSelected()">
+            Delete selected node
+          </button>
+        </div>
+      } @else {
+        <p class="spc__muted">
+          Select a node in the tree to edit fields. Session types and image URL are L3-only; description is not used at
+          L1 (PRD §4.3).
+        </p>
+      }
+    </section>
+  </div>
+
+  @if (showPreview()) {
+    <section class="spc__preview" aria-label="Read-only storefront preview">
+      <h2 class="spc__panel-title">Storefront preview (read-only mock)</h2>
+      <p class="spc__muted">
+        Uses L1 titles as tabs and L2 sections with L3 ticket-style cards (layout inspired by the festival tickets
+        prototype). Read-only sanity check for hierarchy and copy.
+      </p>
+      @if (sortRows(config().l1Categories).length === 0) {
+        <p class="spc__muted">Nothing to preview.</p>
+      } @else {
+        <div class="spc__preview-locale">
+          <label class="spc__field spc__field--inline spc__field--preview-locale">
+            <span class="spc__label">Preview locale</span>
+            <select
+              class="spc__select"
+              [value]="previewLocale()"
+              (change)="setPreviewLocale($any($event.target).value)">
+              <option value="">Default (top-level fields)</option>
+              @for (loc of previewLocaleOptions(); track loc) {
+                <option [value]="loc">{{ loc }}</option>
+              }
+            </select>
+          </label>
+        </div>
+        <div class="spc__pv-tabs-wrap">
+          <div class="spc__pv-tabs" role="tablist">
+            @for (l1 of sortRows(config().l1Categories); track l1.id; let i = $index) {
+              <button
+                type="button"
+                role="tab"
+                class="spc__pv-tab"
+                [class.spc__pv-tab--active]="i === previewTabIndex()"
+                (click)="setPreviewTab(i)">
+                {{ previewExternalTitle(l1) }}
+              </button>
+            }
+          </div>
+        </div>
+        @if (activePreviewL1(); as pv) {
+          <div class="spc__pv-body">
+            <p class="spc__pv-desc spc__pv-desc--tab-hint">L1 has no long description in the PRD model — content sits under L2/L3.</p>
+            @for (l2 of sortRows(pv.children); track l2.id) {
+              <section class="spc__pv-section">
+                <div class="spc__pv-section-head">
+                  <h3 class="spc__pv-section-title">{{ previewExternalTitle(l2) }}</h3>
+                  @if (sortRows(l2.children).length >= 2) {
+                    <span class="spc__pv-section-meta">{{ sortRows(l2.children).length }} options</span>
+                  }
+                </div>
+                @if (previewDescription(l2)) {
+                  <p class="spc__pv-desc spc__pv-desc--small">{{ previewDescription(l2) }}</p>
+                }
+                <div class="spc__pv-cards">
+                  @for (l3 of sortRows(l2.children); track l3.id) {
+                    <article class="spc__pv-card">
+                      <div class="spc__pv-card-media">
+                        @if (l3.imageUrl) {
+                          <img
+                            class="spc__pv-card-img"
+                            [src]="l3.imageUrl"
+                            [alt]="previewExternalTitle(l3)"
+                            width="400"
+                            height="288"
+                            loading="lazy" />
+                        } @else {
+                          <div class="spc__pv-card-img spc__pv-card-img--placeholder" aria-hidden="true"></div>
+                        }
+                      </div>
+                      <div class="spc__pv-card-body">
+                        <h4 class="spc__pv-card-title">{{ previewExternalTitle(l3) }}</h4>
+                        @if (previewDescription(l3)) {
+                          <p class="spc__pv-card-desc">{{ previewDescription(l3) }}</p>
+                        }
+                        @if (l3.sessionTypeIds.length > 0) {
+                          <fieldset class="spc__pv-st-fieldset">
+                            <legend class="spc__pv-st-legend">Session type</legend>
+                            <div class="spc__pv-st-chips" role="radiogroup" [attr.aria-label]="'Session type for ' + previewExternalTitle(l3)">
+                              @for (sid of l3.sessionTypeIds; track sid) {
+                                <label class="spc__pv-st-chip" [class.spc__pv-st-chip--selected]="previewSessionPickFor(l3) === sid">
+                                  <input
+                                    type="radio"
+                                    class="spc__pv-st-radio"
+                                    [name]="'pv-st-' + l3.id"
+                                    [value]="sid"
+                                    [checked]="previewSessionPickFor(l3) === sid"
+                                    (change)="setPreviewSessionPick(l3.id, sid)" />
+                                  <span class="spc__pv-st-chip-text">{{ sessionTypeName(sid) }}</span>
+                                </label>
+                              }
+                            </div>
+                          </fieldset>
+                          <div class="spc__pv-qty">
+                            <span class="spc__pv-qty-label">Quantity</span>
+                            <div class="spc__pv-qty-control" aria-label="Quantity selector">
+                              <button
+                                type="button"
+                                class="spc__pv-qty-btn"
+                                [disabled]="previewSessionQtyFor(l3) <= 1"
+                                aria-label="Decrease quantity"
+                                (click)="decreasePreviewSessionQty(l3)">
+                                −
+                              </button>
+                              <span class="spc__pv-qty-value">{{ previewSessionQtyFor(l3) }}</span>
+                              <button
+                                type="button"
+                                class="spc__pv-qty-btn"
+                                [disabled]="previewSessionQtyFor(l3) >= 10"
+                                aria-label="Increase quantity"
+                                (click)="increasePreviewSessionQty(l3)">
+                                +
+                              </button>
+                            </div>
+                          </div>
+                        }
+                        <div class="spc__pv-card-footer">
+                          @if (l3.sessionTypeIds.length === 0) {
+                            <span class="spc__pv-card-foot-muted">No session types linked</span>
+                          }
+                        </div>
+                      </div>
+                    </article>
+                  }
+                </div>
+              </section>
+            }
+          </div>
+        }
+      }
+    </section>
+  }
+
+  <section class="spc__json" aria-label="Exported configuration JSON">
+    <h2 class="spc__panel-title">Raw config</h2>
+    <pre class="spc__pre">{{ exportJson() }}</pre>
+  </section>
+</div>

@@ -1,0 +1,48 @@
+@if (item.route) {
+  <a
+    class="menu-item"
+    [routerLink]="item.route"
+    routerLinkActive="menu-item--is-active"
+    [routerLinkActiveOptions]="{ exact: true }"
+    [ngClass]="{ 'menu-item--is-open': item.isOpen }">
+    <div class="menu-item__content">
+      <span *ngIf="item.iconComponent" class="menu-item__icon">
+        <ng-container *ngComponentOutlet="item.iconComponent" />
+      </span>
+      <span class="menu-item__label">{{ item.label }}</span>
+    </div>
+    <svg
+      *ngIf="item.items?.length"
+      class="menu-item__accordion-icon"
+      aria-hidden="true" focusable="false"
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 256 512"
+      fill="currentColor">
+      <path d="M119.5 326.9L3.5 209.1c-4.7-4.7-4.7-12.3 0-17l7.1-7.1c4.7-4.7 12.3-4.7 17 0L128 287.3l100.4-102.2c4.7-4.7 12.3-4.7 17 0l7.1 7.1c4.7 4.7 4.7 12.3 0 17L136.5 327c-4.7 4.6-12.3 4.6-17-.1z"/>
+    </svg>
+  </a>
+} @else {
+  <a
+    class="menu-item"
+    [ngClass]="{
+      'menu-item--is-open': item.isOpen,
+      'menu-item--is-active': item.active
+    }"
+    (click)="item.items?.length ? toggled.emit() : null">
+    <div class="menu-item__content">
+      <span *ngIf="item.iconComponent" class="menu-item__icon">
+        <ng-container *ngComponentOutlet="item.iconComponent" />
+      </span>
+      <span class="menu-item__label">{{ item.label }}</span>
+    </div>
+    <svg
+      *ngIf="item.items?.length"
+      class="menu-item__accordion-icon"
+      aria-hidden="true" focusable="false"
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 256 512"
+      fill="currentColor">
+      <path d="M119.5 326.9L3.5 209.1c-4.7-4.7-4.7-12.3 0-17l7.1-7.1c4.7-4.7 12.3-4.7 17 0L128 287.3l100.4-102.2c4.7-4.7 12.3-4.7 17 0l7.1 7.1c4.7 4.7 4.7 12.3 0 17L136.5 327c-4.7 4.6-12.3 4.6-17-.1z"/>
+    </svg>
+  </a>
+}

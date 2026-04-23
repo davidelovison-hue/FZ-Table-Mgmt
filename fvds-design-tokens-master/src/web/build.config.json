@@ -1,0 +1,25 @@
+{
+  "include": ["build/tokens/primitives/**/*.json", "build/tokens/semantic/**/*.json"],
+  "source": ["build/tokens/web/**/*.json"],
+  "platforms": {
+    "scss/colors": {
+      "transformGroup": "custom/scss",
+      "prefix": "ignt",
+      "buildPath": "build/scss/colors/",
+      "files": [
+        {
+          "destination": "_color-palette.scss",
+          "format": "custom/scss/palette",
+          "filter": {
+            "attributes": { "type": "palette" }
+          }
+        },
+        {
+          "destination": "_color-semantics.scss",
+          "format": "custom/scss/colorSemantics",
+          "filter": "colorExceptPalette"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,27 @@
+<header role="banner" class="headerbar">
+  <div class="headerbar__lead-side">
+    <button
+      type="button"
+      aria-label="Toggle sidebar"
+      class="headerbar__show-menu"
+      (click)="toggleSidebar.emit()">
+      <img
+        alt="Toggle menu icon"
+        aria-hidden="true"
+        class="headerbar__sidebarIcon"
+        src="assets/aside-menu-icon-visible.svg">
+    </button>
+  </div>
+
+  <div class="headerbar__center">
+    <a href="#" aria-label="Go to plans page">
+      <img height="32" alt="Fever Zone Logo" class="headerbar__logo" src="assets/feverzone.svg">
+    </a>
+  </div>
+
+  <div role="navigation" aria-label="Main navigation" class="headerbar__trail-side">
+    <app-shift-widget />
+    <button class="button button--small button--sharp-secondary-contrast">Create event</button>
+    <app-user-menu />
+  </div>
+</header>

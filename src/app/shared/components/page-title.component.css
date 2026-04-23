@@ -1,0 +1,38 @@
+:host { display: block; }
+
+.bl-page-title {
+  background: #06232c;
+  padding: 1.5rem 0 .75rem;
+}
+
+.bl-page-title-content {
+  width: 100%;
+  padding-right: .75rem;
+  padding-left: .75rem;
+}
+@media (min-width: 1200px) {
+  .bl-page-title-content { max-width: 96%; }
+}
+
+.bl-page-title-row {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.bl-page-title-title-and-subtitle {
+  flex: 0 0 auto;
+  width: 100%;
+  padding: 0 .75rem;
+}
+
+.el-page-title_title {
+  color: #fff;
+  font-family: Montserrat, sans-serif;
+  font-size: .875rem;
+  font-weight: 700;
+  line-height: 1.14;
+  margin: 0;
+}
+@media (min-width: 768px) {
+  .el-page-title_title { font-size: 1.125rem; }
+}
