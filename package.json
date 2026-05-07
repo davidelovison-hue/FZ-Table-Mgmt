@@ -2,19 +2,19 @@
   "name": "fz-table-mgmt",
   "version": "0.0.0",
   "description": "Fever Zone table management prototype — GitHub Pages",
-  "homepage": "https://davidelovison-hue.github.io/fz-table-mgmt/",
+  "homepage": "https://davidelovison-hue.github.io/FZ-Table-Mgmt/",
   "repository": {
     "type": "git",
-    "url": "https://github.com/davidelovison-hue/fz-table-mgmt.git"
+    "url": "https://github.com/davidelovison-hue/FZ-Table-Mgmt.git"
   },
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
-    "start:gh-pages": "ng serve --serve-path /fz-table-mgmt/ --host 127.0.0.1 --port 4211",
+    "start:gh-pages": "ng serve --serve-path /FZ-Table-Mgmt/ --host 127.0.0.1 --port 4211",
     "build": "ng build",
-    "build:gh-pages": "ng build --configuration production --base-href /fz-table-mgmt/ && npm run gh-pages:spa-files",
+    "build:gh-pages": "ng build --configuration production --base-href /FZ-Table-Mgmt/ && npm run gh-pages:spa-files",
     "gh-pages:spa-files": "node scripts/gh-pages-spa-files.mjs",
-    "deploy:gh-pages": "npm run build:gh-pages && npx angular-cli-ghpages --dir=dist/fz-table-mgmt/browser --repo=https://github.com/davidelovison-hue/fz-table-mgmt.git --branch=gh-pages",
+    "deploy:gh-pages": "npm run build:gh-pages && npx angular-cli-ghpages --dir=dist/fz-table-mgmt/browser --repo=https://github.com/davidelovison-hue/FZ-Table-Mgmt.git --branch=gh-pages",
     "preview:gh-pages": "npm run build:gh-pages && node scripts/preview-gh-pages-setup.mjs && node scripts/static-preview-server.mjs",
     "build:preview:root": "ng build --configuration production --base-href /",
     "preview:root": "npm run build:preview:root && node scripts/static-preview-root-server.mjs",

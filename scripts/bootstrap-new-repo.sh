@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 OWNER="${GITHUB_OWNER:-davidelovison-hue}"
-REPO="${GITHUB_REPO:-fz-table-mgmt}"
+REPO="${GITHUB_REPO:-FZ-Table-Mgmt}"
 VISIBILITY="${GITHUB_VISIBILITY:-public}"
 
 if command -v gh >/dev/null 2>&1; then

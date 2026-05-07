@@ -4,7 +4,7 @@ Angular app: Fever Zone **table management** hub (floor grid, reservations, door
 
 ## Live demo
 
-**URL:** https://davidelovison-hue.github.io/fz-table-mgmt/
+**URL:** https://davidelovison-hue.github.io/FZ-Table-Mgmt/
 
 Built from the `gh-pages` branch. **One-time:** in this repo on GitHub go to **Settings → Pages → Build and deployment**, choose **Deploy from a branch**, branch **`gh-pages`**, folder **`/ (root)`**, then Save.
 
@@ -27,7 +27,7 @@ Serve under the same URL path as GitHub Pages (hot reload):
 npm run start:gh-pages
 ```
 
-Open http://127.0.0.1:4211/fz-table-mgmt/
+Open http://127.0.0.1:4211/FZ-Table-Mgmt/
 
 ### Production build & GitHub Pages
 
@@ -37,7 +37,7 @@ npm run deploy:gh-pages
 ```
 
 `deploy:gh-pages` builds and pushes the `dist` output to the **`gh-pages`** branch of  
-https://github.com/davidelovison-hue/fz-table-mgmt
+https://github.com/davidelovison-hue/FZ-Table-Mgmt
 
 ### Preview production build locally
 
@@ -45,7 +45,7 @@ https://github.com/davidelovison-hue/fz-table-mgmt
 npm run preview:gh-pages
 ```
 
-Then open http://127.0.0.1:4211/fz-table-mgmt/
+Then open http://127.0.0.1:4211/FZ-Table-Mgmt/
 
 ## Repo layout
 

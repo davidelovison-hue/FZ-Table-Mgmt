@@ -1,6 +1,6 @@
 /**
  * Minimal static server for post-build preview (no http-server dependency).
- * Serves `.gh-preview/` so URLs match GitHub Pages: /fz-table-mgmt/...
+ * Serves `.gh-preview/` so URLs match GitHub Pages (repo slug is case-sensitive).
  */
 import http from 'node:http';
 import fs from 'node:fs/promises';
@@ -12,8 +12,8 @@ const projectRoot = path.join(__dirname, '..');
 
 const host = process.env.PREVIEW_HOST ?? '127.0.0.1';
 const port = Number(process.env.PREVIEW_PORT ?? '4211');
-const urlPrefix = '/fz-table-mgmt';
-const siteRoot = path.join(projectRoot, '.gh-preview', 'fz-table-mgmt');
+const urlPrefix = '/FZ-Table-Mgmt';
+const siteRoot = path.join(projectRoot, '.gh-preview', 'FZ-Table-Mgmt');
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -120,7 +120,7 @@ server.listen(port, host, async () => {
   }
   console.log('');
   console.log(`Static preview (production build):`);
-  console.log(`  http://${host}:${port}${urlPrefix}/`);
+  console.log(`  http://${host}:${port}${urlPrefix}/ (same path casing as GitHub Pages)`);
   console.log('');
 });
 
