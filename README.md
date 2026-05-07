@@ -47,6 +47,10 @@ npm run preview:gh-pages
 
 Then open http://127.0.0.1:4211/FZ-Table-Mgmt/
 
+GitHub Pages URLs use the **repository name exactly as shown on GitHub** (here `FZ-Table-Mgmt`, not `fz-table-mgmt`). The Angular `base-href` must match.
+
+If this folder ever pointed at another remote (for example FeverZone guestlist), it now uses **`origin` → `FZ-Table-Mgmt`**; the old remote is kept as **`guestlist-origin`** when applicable.
+
 ## Repo layout
 
 - Source: `src/`
