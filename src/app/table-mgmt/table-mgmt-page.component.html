@@ -1,0 +1,580 @@
+<div class="tm-root">
+  <section class="tm-page-head">
+    <div class="tm-toolbar tm-toolbar--main">
+      <div class="tm-toolbar__filters">
+        <label class="ctl">
+          <span class="ctl__label">Event</span>
+          <select [value]="tm.eventId()" (change)="tm.setEvent($any($event.target).value)">
+            @for (event of tm.events; track event.id) {
+              <option [value]="event.id">{{ event.name }}</option>
+            }
+          </select>
+        </label>
+
+        <label class="ctl">
+          <span class="ctl__label">Calendar view</span>
+          <select [value]="tm.view()" (change)="tm.setView($any($event.target).value)">
+            <option value="single-day">Single session</option>
+            <option value="multi-day" [disabled]="tm.activeEvent().mode === 'one-off'">All sessions</option>
+          </select>
+        </label>
+
+        <label class="ctl">
+          <span class="ctl__label">Zone order</span>
+          <select [value]="tm.zoneOrder()" (change)="tm.setZoneOrder($any($event.target).value)">
+            <option value="alphabetical">Name (A–Z)</option>
+            <option value="capacity-high">Capacity</option>
+            <option value="price-high">Price high</option>
+            <option value="price-low">Price low</option>
+          </select>
+        </label>
+      </div>
+
+      <nav class="tm-tabs" aria-label="Operations">
+        <button type="button" class="tm-tab" [class.tm-tab--active]="tm.opsTab() === 'floor'" (click)="setOpsTab('floor')">
+          Floor
+        </button>
+        <button type="button" class="tm-tab" [class.tm-tab--active]="tm.opsTab() === 'bookings'" (click)="setOpsTab('bookings')">
+          Reservations
+        </button>
+        <button type="button" class="tm-tab" [class.tm-tab--active]="tm.opsTab() === 'door'" (click)="setOpsTab('door')">
+          Door
+        </button>
+        <button type="button" class="tm-tab" [class.tm-tab--active]="tm.opsTab() === 'reporting'" (click)="setOpsTab('reporting')">
+          POS &amp; reporting
+        </button>
+      </nav>
+      <button type="button" class="tm-tab tm-tab--cta" (click)="openCreateReservationModal()">+ Create reservation</button>
+    </div>
+
+    @if (tm.opsTab() === 'floor') {
+      <div class="tm-toolbar tm-toolbar--floor">
+        <fieldset class="toggles">
+          <legend>Zones</legend>
+          <label><input type="checkbox" [checked]="tm.selectedZones().vip" (change)="tm.toggleZoneFilter('vip')" /> VIP</label>
+          <label>
+            <input type="checkbox" [checked]="tm.selectedZones()['main-room']" (change)="tm.toggleZoneFilter('main-room')" />
+            Main Room
+          </label>
+          <label>
+            <input type="checkbox" [checked]="tm.selectedZones().terrace" (change)="tm.toggleZoneFilter('terrace')" />
+            Terrace
+          </label>
+        </fieldset>
+
+        <div class="ctl ctl--floor-lifecycle-ms tm-floor-lifecycle-ms">
+          <span class="ctl__label">Lifecycle</span>
+          <div class="tm-multi-select">
+            <button
+              type="button"
+              class="tm-multi-select__trigger"
+              [class.tm-multi-select__trigger--open]="floorLifecycleMsOpen()"
+              [attr.aria-expanded]="floorLifecycleMsOpen() ? 'true' : 'false'"
+              aria-haspopup="listbox"
+              (click)="toggleFloorLifecycleMs($event)">
+              <span class="tm-multi-select__value">{{ floorLifecycleMsSummary() }}</span>
+              <i class="fa-solid fa-chevron-down tm-multi-select__chev" aria-hidden="true"></i>
+            </button>
+            @if (floorLifecycleMsOpen()) {
+              <div class="tm-multi-select__panel" role="listbox" aria-multiselectable="true" aria-label="Lifecycle visibility">
+                <div class="tm-multi-select__toolbar">
+                  <button type="button" class="tm-multi-select__link" (click)="tm.selectAllFloorLifecycleSlotFilters()">Select all</button>
+                  <button type="button" class="tm-multi-select__link" (click)="tm.clearFloorLifecycleSlotFilters()">Clear all</button>
+                </div>
+                @for (st of statusOptions; track st) {
+                  <label class="tm-multi-select__option" role="option" [attr.aria-selected]="tm.floorLifecycleSlotFilters()[st]">
+                    <input type="checkbox" [checked]="tm.floorLifecycleSlotFilters()[st]" (change)="tm.toggleFloorLifecycleSlotFilter(st)" />
+                    <span>{{ tm.lifecycleLabel(st) }}</span>
+                  </label>
+                }
+                <p class="toggles__hint tm-multi-select__hint">
+                  Only checked lifecycles show on assigned slots. Empty and blocked slots stay visible; holds need
+                  {{ tm.lifecycleLabel('pending') }} or {{ tm.lifecycleLabel('to_review') }}.
+                </p>
+              </div>
+            }
+          </div>
+        </div>
+      </div>
+    }
+  </section>
+
+  <section
+    class="calendar-stage tm-stage"
+    [class.calendar-stage--with-panel]="tm.sidePanelMode() !== 'closed' || hasAuxReservationDrawer()"
+    [class.calendar-stage--fz-booked-panel]="tm.isBookedSidePanelMode() || hasAuxReservationDrawer()">
+    @switch (tm.opsTab()) {
+      @case ('floor') {
+        <app-floor-view />
+      }
+      @case ('bookings') {
+        <div class="tm-tab-panel tm-tab-panel--surface">
+          <div class="tm-panel tm-bookings">
+            <header class="tm-tab-head">
+              <h2 class="tm-tab-head__title">Reservations</h2>
+              <p class="tm-tab-head__hint">Zone summaries and lifecycle-safe quick creates.</p>
+            </header>
+            <div class="tm-bookings__toolbar">
+              <label class="ctl ctl--inline">
+                <span class="ctl__label">Lifecycle</span>
+                <select [value]="tm.bookingStatusFilter()" (change)="tm.setBookingStatusFilter($any($event.target).value)">
+                  <option value="all">All</option>
+                  @for (st of statusOptions; track st) {
+                    <option [value]="st">{{ tm.lifecycleLabel(st) }}</option>
+                  }
+                </select>
+              </label>
+              <label class="side-field tm-bookings__search">
+                Search reservation
+                <input
+                  type="search"
+                  [value]="tm.bookingQuery()"
+                  (input)="tm.setBookingQuery($any($event.target).value)"
+                  placeholder="Name, email, phone" />
+              </label>
+            </div>
+            <p class="tm-bookings-bucket-legend" aria-label="Reservation row grouping">
+              <span class="tm-bookings-bucket-legend__item tm-bookings-bucket-legend__item--free">
+                <span class="tm-bookings-bucket-legend__swatch" aria-hidden="true"></span>
+                Green · Free
+              </span>
+              <span class="tm-bookings-bucket-legend__item tm-bookings-bucket-legend__item--partial">
+                <span class="tm-bookings-bucket-legend__swatch" aria-hidden="true"></span>
+                Red · Occupied somewhat
+              </span>
+              <span class="tm-bookings-bucket-legend__item tm-bookings-bucket-legend__item--pending">
+                <span class="tm-bookings-bucket-legend__swatch" aria-hidden="true"></span>
+                Yellow · Pending
+              </span>
+            </p>
+
+            @for (zg of tm.reservationsByZone(); track zg.key) {
+              <section class="tm-zone-block">
+                <header class="tm-zone-block__head">
+                  <h3>{{ zg.label }}</h3>
+                  <span class="tm-zone-block__meta">
+                    Tables {{ zg.tablesReserved }}/{{ zg.tablesTotal }} · Bookings {{ zg.bookings }} · In
+                    {{ zg.checkedIn }}/{{ zg.expectedGuests }}
+                    @if (zg.bookings > 0) {
+                      · Deposit paid {{ tm.formatPrice(zg.depositPaidSum) }} · Total {{ tm.formatPrice(zg.reservationsTotalSum) }}
+                    }
+                  </span>
+                </header>
+                @if (!zg.reservations.length) {
+                  <p class="tm-empty">No reservations for this zone with the current filter.</p>
+                }
+                @for (grp of tm.bookingsAttendanceGroups(zg.reservations); track grp.key) {
+                  <div class="tm-bookings-grp" [class.tm-bookings-grp--free]="grp.key === 'free'" [class.tm-bookings-grp--pending]="grp.key === 'pending'" [class.tm-bookings-grp--partial]="grp.key === 'partial'">
+                    <div class="tm-bookings-grp__head">
+                      <span class="tm-bookings-grp__swatch" aria-hidden="true"></span>
+                      <span class="tm-bookings-grp__title">{{ grp.label }}</span>
+                      <span class="tm-bookings-grp__count">{{ grp.reservations.length }}</span>
+                    </div>
+                    <ul class="tm-res-list">
+                      @for (r of grp.reservations; track r.id) {
+                        <li
+                          class="tm-res-row"
+                          [class.tm-res-row--alert]="tm.highlightReservation(r)"
+                          (click)="tm.openReservationDetails(r.id)">
+                          <div class="tm-res-row__lead tm-bookings-row-menu" (click)="$event.stopPropagation()">
+                            <button
+                              type="button"
+                              class="tm-res-row__menu-trigger"
+                              [class.tm-res-row__menu-trigger--open]="bookingsActionsMenuId() === r.id"
+                              [attr.aria-expanded]="bookingsActionsMenuId() === r.id ? 'true' : 'false'"
+                              aria-haspopup="menu"
+                              aria-label="More reservation actions"
+                              (click)="toggleBookingsActionsMenu(r.id, $event)">
+                              <span>More</span>
+                              <i class="fa-solid fa-chevron-down tm-res-row__menu-chev" aria-hidden="true"></i>
+                            </button>
+                            @if (bookingsActionsMenuId() === r.id) {
+                              <div class="tm-res-row__menu-panel" role="menu">
+                                <button
+                                  type="button"
+                                  role="menuitem"
+                                  class="tm-res-row__menu-item"
+                                  (click)="openGuestProfileAndCloseBookingsMenu(r.id, $event)">
+                                  <i class="fa-regular fa-user" aria-hidden="true"></i>
+                                  Open profile
+                                </button>
+                                <button
+                                  type="button"
+                                  role="menuitem"
+                                  class="tm-res-row__menu-item tm-res-row__menu-item--pos"
+                                  (click)="openPosAndCloseBookingsMenu(r.id, $event)">
+                                  <i class="fa-solid fa-receipt" aria-hidden="true"></i>
+                                  Open POS
+                                </button>
+                              </div>
+                            }
+                          </div>
+                          <div class="tm-res-row__content">
+                            <span class="tm-res-row__name">{{ r.guestName }}</span>
+                            <span class="tm-res-row__pill">{{ tm.lifecycleLabel(r.lifecycleStatus) }}</span>
+                            <span class="tm-res-row__sub">{{ r.groupSize }} pax · {{ tm.paymentTag(r) }} · {{ tm.assignmentLine(r) }}</span>
+                            <span class="tm-res-row__fin">
+                              Deposit paid {{ tm.formatPrice(tm.sumPayments(r)) }} · Total {{ tm.formatPrice(r.totalPrice) }}
+                            </span>
+                          </div>
+                        </li>
+                      }
+                    </ul>
+                  </div>
+                }
+              </section>
+            }
+          </div>
+        </div>
+      }
+      @case ('door') {
+        <div class="tm-tab-panel tm-tab-panel--surface">
+          <div class="tm-panel tm-door">
+            <header class="tm-tab-head">
+              <h2 class="tm-tab-head__title">Door</h2>
+              <p class="tm-tab-head__hint">One-tap check-in, RFID, and handoff to details.</p>
+            </header>
+            <label class="side-field tm-door__search">
+              Search name or phone
+              <input type="search" [value]="tm.doorQuery()" (input)="tm.setDoorQuery($any($event.target).value)" placeholder="Filter…" />
+            </label>
+            <ul class="tm-door-list">
+              @for (r of tm.doorMatches(); track r.id) {
+                <li class="tm-door-card">
+                  <div>
+                    <strong>{{ r.guestName }}</strong>
+                    <span class="tm-door-card__meta">{{ r.phone || '—' }} · {{ tm.assignmentLine(r) }}</span>
+                  </div>
+                  <div class="tm-door-card__actions">
+                    <button type="button" class="button side-btn side-btn--primary" (click)="tm.checkInOneTap(r.id)">Check-in all</button>
+                    <button type="button" class="button side-btn side-btn--secondary" (click)="tm.adjustCheckedIn(r.id, 1)">+1 guest</button>
+                    <button type="button" class="button side-btn side-btn--secondary" (click)="tm.linkRfidMock(r.id, 1)">+1 RFID</button>
+                    <button type="button" class="button side-btn side-btn--secondary" (click)="tm.openReservationDetails(r.id)">Details</button>
+                  </div>
+                </li>
+              }
+            </ul>
+          </div>
+        </div>
+      }
+      @case ('reporting') {
+        @let rep = tm.reportingSnapshot();
+        <div class="tm-tab-panel tm-tab-panel--surface">
+          <div class="tm-panel tm-report">
+            <header class="tm-tab-head">
+              <h2 class="tm-tab-head__title">POS &amp; reporting</h2>
+              <p class="tm-tab-head__hint">Session KPIs and mock POS consumption (§5.8–5.9).</p>
+            </header>
+            <div class="tm-kpi-grid">
+              <div class="tm-kpi">
+                <span class="tm-kpi__label">Pending payments</span>
+                <span class="tm-kpi__value">{{ rep.pendingPayments }}</span>
+              </div>
+              <div class="tm-kpi">
+                <span class="tm-kpi__label">Booking payments</span>
+                <span class="tm-kpi__value">{{ tm.formatPrice(rep.totalReservationPayments) }}</span>
+              </div>
+              <div class="tm-kpi">
+                <span class="tm-kpi__label">POS (mock)</span>
+                <span class="tm-kpi__value">{{ tm.formatPrice(rep.posConsumption) }}</span>
+              </div>
+              <div class="tm-kpi">
+                <span class="tm-kpi__label">Total revenue (approx)</span>
+                <span class="tm-kpi__value">{{ tm.formatPrice(rep.totalRevenueApprox) }}</span>
+              </div>
+              <div class="tm-kpi">
+                <span class="tm-kpi__label">Check-in rate</span>
+                <span class="tm-kpi__value">{{ (rep.occupancyRate * 100).toFixed(0) }}%</span>
+              </div>
+              <div class="tm-kpi">
+                <span class="tm-kpi__label">No-show rate</span>
+                <span class="tm-kpi__value">{{ (rep.noShowRate * 100).toFixed(0) }}%</span>
+              </div>
+            </div>
+            <p class="tm-report__note">{{ rep.reconciliationNote }}</p>
+          </div>
+        </div>
+      }
+    }
+
+    <app-table-side-panel />
+  </section>
+
+  @if (isCreateReservationModalOpen()) {
+    <div class="tm-modal-backdrop" role="presentation" (click)="closeCreateReservationModal()">
+      <section
+        class="tm-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Create reservation"
+        (click)="$event.stopPropagation()">
+        <header class="tm-modal__head">
+          <h3>Create reservation</h3>
+          <button type="button" class="tm-modal__close" (click)="closeCreateReservationModal()" aria-label="Close create reservation popup">
+            <i class="fa-solid fa-xmark" aria-hidden="true"></i>
+          </button>
+        </header>
+
+        <div class="tm-modal__body">
+          <label class="side-field">
+            Guest name *
+            <input
+              type="text"
+              placeholder="Guest name"
+              [value]="createReservationDraft().guestName"
+              (input)="setCreateReservationField('guestName', $any($event.target).value)" />
+          </label>
+
+          <div class="tm-modal__row tm-modal__row--two">
+            <label class="side-field">
+              Session
+              <select [value]="createReservationDraft().sessionId" (change)="setCreateReservationField('sessionId', $any($event.target).value)">
+                @for (session of tm.activeEvent().sessions; track session.id) {
+                  <option [value]="session.id">{{ session.label }} · {{ session.dateLabel }}</option>
+                }
+              </select>
+            </label>
+            <label class="side-field">
+              Zone preference
+              <select [value]="createReservationDraft().zonePreference" (change)="setCreateReservationZone($any($event.target).value)">
+                <option value="vip">VIP</option>
+                <option value="main-room">Main Room</option>
+                <option value="terrace">Terrace</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="tm-modal__row tm-modal__row--two">
+            <label class="side-field">
+              Assign table
+              <select [value]="createReservationDraft().tableId" (change)="onCreateReservationTableChange($any($event.target).value)">
+                <option value="">Unassigned</option>
+                @for (table of tablesForCreateZone(); track table.id) {
+                  <option [value]="table.id">{{ table.name }} ({{ table.zoneLabel }})</option>
+                }
+              </select>
+            </label>
+            <label class="side-field">
+              Lifecycle
+              <select
+                [value]="createReservationDraft().lifecycleStatus"
+                (change)="setCreateReservationLifecycle($any($event.target).value)">
+                @for (st of statusOptions; track st) {
+                  <option [value]="st">{{ tm.lifecycleLabel(st) }}</option>
+                }
+              </select>
+            </label>
+          </div>
+
+          <div class="tm-modal__row tm-modal__row--three">
+            <label class="side-field">
+              Group size
+              <input
+                type="number"
+                min="1"
+                [value]="createReservationDraft().groupSize"
+                (input)="setCreateReservationGroupSize($any($event.target).value)" />
+            </label>
+            <label class="side-field">
+              Total price (€)
+              <input
+                type="number"
+                min="0"
+                [value]="createReservationDraft().totalPrice"
+                (input)="setCreateReservationAmount('totalPrice', $any($event.target).value)" />
+            </label>
+            <label class="side-field">
+              Deposit target (€)
+              <input
+                type="number"
+                min="0"
+                [value]="createReservationDraft().depositTarget"
+                (input)="setCreateReservationAmount('depositTarget', $any($event.target).value)" />
+            </label>
+          </div>
+
+          <div class="tm-modal__row tm-modal__row--two">
+            <label class="side-field">
+              Phone
+              <input type="text" [value]="createReservationDraft().phone" (input)="setCreateReservationField('phone', $any($event.target).value)" />
+            </label>
+            <label class="side-field">
+              Email
+              <input type="email" [value]="createReservationDraft().email" (input)="setCreateReservationField('email', $any($event.target).value)" />
+            </label>
+          </div>
+
+          <div class="tm-modal__row tm-modal__row--two">
+            <label class="side-field">
+              Booking from
+              <input
+                type="text"
+                [value]="createReservationDraft().bookingFrom"
+                (input)="setCreateReservationField('bookingFrom', $any($event.target).value)" />
+            </label>
+            <label class="side-field">
+              Attribution
+              <input
+                type="text"
+                [value]="createReservationDraft().attribution"
+                (input)="setCreateReservationField('attribution', $any($event.target).value)" />
+            </label>
+          </div>
+
+          <label class="side-field">
+            Time range label
+            <input
+              type="text"
+              [value]="createReservationDraft().timeRangeLabel"
+              (input)="setCreateReservationField('timeRangeLabel', $any($event.target).value)" />
+          </label>
+
+          <div class="tm-modal__row tm-modal__row--two">
+            <label class="side-field">
+              Internal notes
+              <textarea
+                class="side-field"
+                rows="2"
+                [value]="createReservationDraft().internalNotes"
+                (input)="setCreateReservationField('internalNotes', $any($event.target).value)"></textarea>
+            </label>
+            <label class="side-field">
+              Customer notes
+              <textarea
+                class="side-field"
+                rows="2"
+                [value]="createReservationDraft().customerNotes"
+                (input)="setCreateReservationField('customerNotes', $any($event.target).value)"></textarea>
+            </label>
+          </div>
+
+          @if (createReservationError()) {
+            <p class="tm-modal__error">{{ createReservationError() }}</p>
+          }
+        </div>
+
+        <footer class="tm-modal__actions">
+          <button type="button" class="button side-btn side-btn--secondary" (click)="closeCreateReservationModal()">Cancel</button>
+          <button type="button" class="button side-btn side-btn--primary" (click)="submitCreateReservation()">Create reservation</button>
+        </footer>
+      </section>
+    </div>
+  }
+
+  @if (selectedGuestProfile(); as profile) {
+    <aside
+      class="side-panel side-panel--booked-details tm-aux-drawer asset-based-calendar-view__details-panel asset-based-calendar-view__details-panel--selected"
+      aria-label="Guest profile">
+      <button type="button" class="side-panel__close" (click)="closeGuestProfile()" aria-label="Close profile panel">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="booked-slot-details">
+        <header class="fz-booked-drawer__header">
+          <div class="fz-booked-drawer__title-row">
+            <h2 class="fz-booked-drawer__name">{{ profile.guestName }}</h2>
+          </div>
+          <p class="fz-booked-drawer__order-id">Guest profile</p>
+        </header>
+        <div class="tm-modal__body tm-aux-drawer__body">
+          <div class="tm-profile-totals">
+            <div class="tm-kpi">
+              <span class="tm-kpi__label">Total booked</span>
+              <span class="tm-kpi__value">{{ tm.formatPrice(guestProfileTotals().totalBooked) }}</span>
+            </div>
+            <div class="tm-kpi">
+              <span class="tm-kpi__label">Total paid</span>
+              <span class="tm-kpi__value">{{ tm.formatPrice(guestProfileTotals().totalPaid) }}</span>
+            </div>
+            <div class="tm-kpi">
+              <span class="tm-kpi__label">Onsite POS</span>
+              <span class="tm-kpi__value">{{ tm.formatPrice(guestProfileTotals().totalPos) }}</span>
+            </div>
+            <div class="tm-kpi">
+              <span class="tm-kpi__label">Outstanding</span>
+              <span class="tm-kpi__value">{{ tm.formatPrice(guestProfileTotals().outstanding) }}</span>
+            </div>
+          </div>
+
+          <section class="tm-profile-meta">
+            <p><strong>Name:</strong> {{ profile.guestName }}</p>
+            <p><strong>Email:</strong> {{ profile.email || '—' }}</p>
+            <p><strong>Phone:</strong> {{ profile.phone || '—' }}</p>
+          </section>
+
+          <p class="tm-profile-history__title">Past purchases</p>
+          <ul class="tm-profile-history">
+            @for (row of guestProfilePurchases(); track row.id) {
+              <li>
+                <div>
+                  <strong>
+                    {{ row.label }}
+                    @if (row.isMock) {
+                      <small class="tm-pill-mock">Mock</small>
+                    }
+                  </strong>
+                  <span>{{ row.context }}</span>
+                </div>
+                <div class="tm-profile-history__amounts">
+                  <span>{{ tm.formatPrice(row.total) }}</span>
+                  <small>Paid {{ tm.formatPrice(row.paid) }} · POS {{ tm.formatPrice(row.pos) }}</small>
+                </div>
+              </li>
+            }
+          </ul>
+        </div>
+      </div>
+    </aside>
+  }
+
+  @if (selectedPosReservation(); as row) {
+    <aside
+      class="side-panel side-panel--booked-details tm-aux-drawer asset-based-calendar-view__details-panel asset-based-calendar-view__details-panel--selected"
+      aria-label="POS onsite consumption">
+      <button type="button" class="side-panel__close" (click)="closePosConsumption()" aria-label="Close POS panel">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <div class="booked-slot-details">
+        <header class="fz-booked-drawer__header">
+          <div class="fz-booked-drawer__title-row">
+            <h2 class="fz-booked-drawer__name">{{ row.guestName }}</h2>
+          </div>
+          <p class="fz-booked-drawer__order-id">Onsite consumption</p>
+        </header>
+        <div class="tm-modal__body tm-aux-drawer__body">
+          <div class="tm-kpi-grid tm-kpi-grid--aux-drawer">
+            <div class="tm-kpi">
+              <span class="tm-kpi__label">Reservation total</span>
+              <span class="tm-kpi__value">{{ tm.formatPrice(row.totalPrice) }}</span>
+            </div>
+            <div class="tm-kpi">
+              <span class="tm-kpi__label">Onsite POS spend</span>
+              <span class="tm-kpi__value">{{ tm.formatPrice(row.pos?.total ?? 0) }}</span>
+            </div>
+            <div class="tm-kpi">
+              <span class="tm-kpi__label">POS lines</span>
+              <span class="tm-kpi__value">{{ row.pos?.lines?.length ?? 0 }}</span>
+            </div>
+          </div>
+
+          @if (!row.pos) {
+            <p class="tm-empty">No onsite POS consumption registered for this reservation yet.</p>
+          } @else {
+            <ul class="tm-profile-history">
+              @for (line of row.pos.lines; track line.label + '-' + line.qty) {
+                <li>
+                  <div>
+                    <strong>{{ line.label }}</strong>
+                    <span>Qty {{ line.qty }}</span>
+                  </div>
+                  <div class="tm-profile-history__amounts">
+                    <span>{{ tm.formatPrice(line.amount) }}</span>
+                  </div>
+                </li>
+              }
+            </ul>
+          }
+        </div>
+      </div>
+    </aside>
+  }
+</div>

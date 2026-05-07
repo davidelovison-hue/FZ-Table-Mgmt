@@ -1,0 +1,34 @@
+@let status = tm.resolveCellStatus(tm.activeEvent()!.id, session().id, table().id);
+@let res = tm.resolveReservationOnCell(tm.activeEvent()!.id, session().id, table().id);
+@let slotLabel = tm.calendarSlotStatusLabel(status, res);
+@if (tm.floorSlotFilterVisible(tm.activeEvent()!.id, session().id, table().id)) {
+  <button
+    class="slot-btn slot-btn--floor"
+    type="button"
+    [class.slot-btn--floor-assigned]="!!res"
+    [class.slot-btn--floor-open]="!res && status === 'available'"
+    [class.slot-btn--floor-hold]="!res && status === 'reserved'"
+    [class.slot-btn--floor-blocked]="status === 'blocked'"
+    [attr.title]="tm.floorSlotReservationTooltip(status, res)"
+    (click)="tm.openCell(session(), table())">
+    @if (res) {
+      <span class="slot-badge slot-badge--floor">{{ slotLabel }}</span>
+      <span class="slot-primary slot-primary--guest">{{ res.guestName }}</span>
+      <span class="slot-meta slot-meta--fin">{{ tm.formatPrice(tm.sumPayments(res)) }} paid · {{ tm.formatPrice(res.totalPrice) }} total</span>
+    } @else if (status === 'reserved') {
+      <span class="slot-badge slot-badge--floor">{{ slotLabel }}</span>
+      <span class="slot-primary slot-primary--guest">{{ tm.reservedGuestLabelForCell(tm.activeEvent()!.id, session().id, table().id) }}</span>
+    } @else if (status === 'blocked') {
+      <span class="slot-badge slot-badge--floor">{{ slotLabel }}</span>
+      <span class="slot-primary">Unavailable</span>
+    } @else {
+      <span class="slot-primary slot-primary--muted">{{ slotLabel }}</span>
+    }
+  </button>
+} @else {
+  <div
+    class="slot-filtered"
+    [attr.title]="tm.calendarFilteredSlotTitle(tm.activeEvent()!.id, session().id, table().id, status)">
+    <span class="slot-filtered__abbr">{{ tm.calendarFilteredSlotText(tm.activeEvent()!.id, session().id, table().id, status) }}</span>
+  </div>
+}

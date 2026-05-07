@@ -1,0 +1,61 @@
+<svg width="800" height="560" viewBox="0 0 800 560" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect x="1" y="1" width="798" height="558" rx="23" fill="#F8FAFB" stroke="#CCD2D8" stroke-width="2"/>
+  <rect x="26" y="26" width="748" height="120" rx="14" fill="#EEF2F5"/>
+  <text x="50" y="74" fill="#031419" font-size="28" font-family="Montserrat, sans-serif" font-weight="700">Main stage</text>
+  <text x="50" y="108" fill="#536B75" font-size="20" font-family="Montserrat, sans-serif">Operator map preview</text>
+
+  <rect x="42" y="182" width="240" height="330" rx="16" fill="#E6F4FF" stroke="#9FCCEE" stroke-width="2"/>
+  <text x="62" y="224" fill="#0079CA" font-size="24" font-family="Montserrat, sans-serif" font-weight="700">VIP</text>
+
+  <rect x="302" y="182" width="286" height="330" rx="16" fill="#F6F8FA" stroke="#CCD2D8" stroke-width="2"/>
+  <text x="322" y="224" fill="#435D68" font-size="24" font-family="Montserrat, sans-serif" font-weight="700">Main room</text>
+
+  <rect x="608" y="182" width="150" height="330" rx="16" fill="#E8F7EF" stroke="#BDE8D0" stroke-width="2"/>
+  <text x="625" y="224" fill="#18824C" font-size="22" font-family="Montserrat, sans-serif" font-weight="700">Terrace</text>
+
+  <g fill="#8A1343">
+    <circle cx="114" cy="280" r="24"/>
+    <circle cx="214" cy="280" r="24"/>
+    <circle cx="114" cy="370" r="24"/>
+    <circle cx="214" cy="370" r="24"/>
+    <circle cx="114" cy="460" r="24"/>
+    <circle cx="214" cy="460" r="24"/>
+
+    <circle cx="372" cy="286" r="24"/>
+    <circle cx="472" cy="286" r="24"/>
+    <circle cx="552" cy="286" r="24"/>
+    <circle cx="372" cy="376" r="24"/>
+    <circle cx="472" cy="376" r="24"/>
+    <circle cx="552" cy="376" r="24"/>
+    <circle cx="372" cy="466" r="24"/>
+    <circle cx="472" cy="466" r="24"/>
+  </g>
+
+  <g fill="#FFFFFF" font-size="14" font-family="Montserrat, sans-serif" font-weight="700" text-anchor="middle">
+    <text x="114" y="286">V1</text>
+    <text x="214" y="286">V2</text>
+    <text x="114" y="376">V3</text>
+    <text x="214" y="376">V4</text>
+    <text x="114" y="466">V5</text>
+    <text x="214" y="466">V6</text>
+    <text x="372" y="292">M1</text>
+    <text x="472" y="292">M2</text>
+    <text x="552" y="292">M3</text>
+    <text x="372" y="382">M4</text>
+    <text x="472" y="382">M5</text>
+    <text x="552" y="382">M6</text>
+    <text x="372" y="472">M7</text>
+    <text x="472" y="472">M8</text>
+  </g>
+
+  <g fill="#24A865">
+    <rect x="646" y="268" width="74" height="40" rx="16"/>
+    <rect x="646" y="334" width="74" height="40" rx="16"/>
+    <rect x="646" y="400" width="74" height="40" rx="16"/>
+  </g>
+  <g fill="#FFFFFF" font-size="13" font-family="Montserrat, sans-serif" font-weight="700" text-anchor="middle">
+    <text x="683" y="293">T1</text>
+    <text x="683" y="359">T2</text>
+    <text x="683" y="425">T3</text>
+  </g>
+</svg>

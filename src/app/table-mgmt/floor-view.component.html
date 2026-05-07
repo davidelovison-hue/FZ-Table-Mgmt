@@ -1,0 +1,195 @@
+<div class="calendar-context">
+  @if (tm.view() === 'multi-day') {
+    <div class="calendar-context__hint">
+      {{ tm.visibleSessions().length }} sessions — scroll horizontally if needed.
+    </div>
+  }
+  @if (tm.view() === 'single-day' && tm.visibleSessions().length) {
+    <div class="calendar-context__date" aria-label="Session date">
+      <div class="single-day-nav" aria-label="Session navigation">
+        <button type="button" class="single-day-nav__btn" [disabled]="!tm.canGoPrevSingleDay()" (click)="tm.goPrevSingleDay()">
+          <i class="fa-solid fa-chevron-left" aria-hidden="true"></i>
+        </button>
+        <span class="single-day-nav__label">
+          {{ tm.visibleSessions()[0].label }} · {{ tm.visibleSessions()[0].dateLabel }}
+        </span>
+        <button type="button" class="single-day-nav__btn" [disabled]="!tm.canGoNextSingleDay()" (click)="tm.goNextSingleDay()">
+          <i class="fa-solid fa-chevron-right" aria-hidden="true"></i>
+        </button>
+        <button type="button" class="single-day-nav__today" [disabled]="tm.isSingleDayOnTodaySession()" (click)="tm.goTodaySingleDay()">
+          Today
+        </button>
+      </div>
+    </div>
+  }
+</div>
+
+<div class="floor-layout">
+  <div class="calendar-grid-shell">
+    <div class="calendar-scroll" role="region" aria-label="Table availability grid">
+      <table class="calendar">
+        <colgroup>
+          <col class="calendar-col-resource" />
+          @for (session of tm.visibleSessions(); track session.id) {
+            <col class="calendar-col-session" />
+          }
+        </colgroup>
+        <thead>
+          <tr>
+            <th class="calendar-corner" scope="col">
+              <span class="calendar-corner__label">Table</span>
+            </th>
+            @for (session of tm.visibleSessions(); track session.id) {
+              <th class="calendar-session-col" scope="col">
+                <span class="calendar-session-col__day">{{ session.label }}</span>
+                <span class="calendar-session-col__date">{{ session.dateLabel }}</span>
+              </th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (zone of tm.floorZones(); track zone.key) {
+            <tr class="zone-row">
+              <th class="zone-heading" [attr.colspan]="tm.visibleSessions().length + 1" scope="colgroup">
+                <button type="button" class="zone-toggle" (click)="tm.toggleZoneCollapse(zone.key)">
+                  <i
+                    class="fa-solid zone-toggle__icon"
+                    [class.fa-chevron-right]="tm.isZoneCollapsed(zone.key)"
+                    [class.fa-chevron-down]="!tm.isZoneCollapsed(zone.key)"></i>
+                  <span class="zone-toggle__title">{{ zone.label }}</span>
+                  <span class="zone-meta">{{ zone.tables.length }} tables</span>
+                </button>
+              </th>
+            </tr>
+
+            @if (!tm.isZoneCollapsed(zone.key)) {
+              @for (table of zone.tables; track table.id) {
+                <tr class="data-row">
+                  <th class="calendar-resource-col" scope="row">
+                    <div class="resource-cell">
+                      <span class="resource-name">{{ table.name }}</span>
+                      @if (table.locked) {
+                        <span class="tm-chip tm-chip--warn">Locked</span>
+                      }
+                      @if (table.hidden) {
+                        <span class="tm-chip">Hidden</span>
+                      }
+                      <span class="resource-price" title="Minimum / base">{{ tm.formatPrice(table.basePrice) }}</span>
+                      <span class="resource-capacity" title="Capacity">
+                        <i class="fa-regular fa-user" aria-hidden="true"></i>
+                        {{ tm.tablePaxRangeLabel(table) }}
+                      </span>
+                      <div class="tm-table-tools">
+                        <button type="button" class="tm-link-btn" (click)="tm.toggleTableLock(table.id); $event.stopPropagation()">
+                          {{ table.locked ? 'Unlock' : 'Lock' }}
+                        </button>
+                        <button type="button" class="tm-link-btn" (click)="tm.toggleTableHide(table.id); $event.stopPropagation()">
+                          {{ table.hidden ? 'Show' : 'Hide' }}
+                        </button>
+                      </div>
+                    </div>
+                  </th>
+                  @for (session of tm.visibleSessions(); track session.id) {
+                    <td appSlotCell class="slot-td" [session]="session" [table]="table"></td>
+                  }
+                </tr>
+              }
+            }
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <aside class="venue-map-panel" aria-label="Venue map">
+    <header class="venue-map-panel__head">
+      <h3>Venue maps</h3>
+      <p>Overall diagram plus live table availability (same labels as the calendar).</p>
+    </header>
+    <section class="venue-map-panel__section venue-map-panel__section--overall">
+      <h4>Overall</h4>
+      <div class="venue-overall-map">
+        <img class="venue-map-panel__image venue-overall-map__diagram" src="assets/venue-floor-map.svg" alt="Venue layout diagram" />
+        <div class="venue-overall-map__statuses" aria-label="Table availability on overall map">
+          <span class="venue-overall-map__statuses-title">Table availability</span>
+          @if (!tm.floorZones().length) {
+            <p class="venue-overall-map__empty">No tables match the current zone / lifecycle filters.</p>
+          }
+          @for (zone of tm.floorZones(); track zone.key) {
+            <div class="venue-overall-map__zone-block">
+              <span class="venue-overall-map__zone-heading">{{ zone.label }}</span>
+              <div class="venue-zone-map__canvas venue-overall-map__tables" [attr.aria-label]="zone.label + ' tables'">
+                @for (table of zone.tables; track table.id) {
+                  <span
+                    class="venue-zone-map__table-id"
+                    [class.venue-zone-map__table-id--assigned]="tm.venueMapTableAssignmentKind()[table.id] === 'assigned'"
+                    [class.venue-zone-map__table-id--partial]="tm.venueMapTableAssignmentKind()[table.id] === 'partial'"
+                    [class.venue-zone-map__table-id--open]="tm.venueMapTableAssignmentKind()[table.id] === 'open'"
+                    [class.venue-zone-map__table-id--blocked]="tm.venueMapTableAssignmentKind()[table.id] === 'blocked'"
+                    [attr.title]="tm.venueMapTableAssignmentTitle(table.id)">
+                    <span class="venue-zone-map__table-name">{{ table.name }}</span>
+                    <span class="venue-zone-map__table-status">{{ tm.venueMapTableStatusLabels()[table.id] }}</span>
+                  </span>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    </section>
+
+    <p class="venue-map-assignment-key">
+      <span class="venue-map-assignment-key__item">
+        <span class="venue-map-assignment-key__mark venue-map-assignment-key__mark--assigned" aria-hidden="true"></span>
+        Assigned
+      </span>
+      <span class="venue-map-assignment-key__item">
+        <span class="venue-map-assignment-key__mark venue-map-assignment-key__mark--open" aria-hidden="true"></span>
+        Not assigned
+      </span>
+      <span class="venue-map-assignment-key__item">
+        <span class="venue-map-assignment-key__mark venue-map-assignment-key__mark--partial" aria-hidden="true"></span>
+        Mixed sessions
+      </span>
+      <span class="venue-map-assignment-key__item">
+        <span class="venue-map-assignment-key__mark venue-map-assignment-key__mark--blocked" aria-hidden="true"></span>
+        Blocked
+      </span>
+    </p>
+
+    <div class="venue-zone-switch" role="tablist" aria-label="Zone map switcher">
+      @for (zone of tm.floorZones(); track zone.key) {
+        <button
+          type="button"
+          class="venue-zone-switch__btn"
+          [class.venue-zone-switch__btn--active]="selectedZoneMap()?.key === zone.key"
+          (click)="setMapZone(zone.key)">
+          {{ zone.label }} ({{ zone.tables.length }})
+        </button>
+      }
+    </div>
+
+    @if (selectedZoneMap(); as zone) {
+      <section class="venue-zone-map">
+        <header class="venue-zone-map__head">
+          <h4>{{ zone.label }}</h4>
+          <span>{{ zone.tables.length }} tables</span>
+        </header>
+        <div class="venue-zone-map__canvas" [attr.aria-label]="zone.label + ' map'">
+          @for (table of zone.tables; track table.id) {
+            <span
+              class="venue-zone-map__table-id"
+              [class.venue-zone-map__table-id--assigned]="tm.venueMapTableAssignmentKind()[table.id] === 'assigned'"
+              [class.venue-zone-map__table-id--partial]="tm.venueMapTableAssignmentKind()[table.id] === 'partial'"
+              [class.venue-zone-map__table-id--open]="tm.venueMapTableAssignmentKind()[table.id] === 'open'"
+              [class.venue-zone-map__table-id--blocked]="tm.venueMapTableAssignmentKind()[table.id] === 'blocked'"
+              [attr.title]="tm.venueMapTableAssignmentTitle(table.id)">
+              <span class="venue-zone-map__table-name">{{ table.name }}</span>
+              <span class="venue-zone-map__table-status">{{ tm.venueMapTableStatusLabels()[table.id] }}</span>
+            </span>
+          }
+        </div>
+      </section>
+    }
+  </aside>
+</div>

@@ -7,8 +7,9 @@ import { GuestlistShellComponent } from './guestlist/guestlist-shell.component';
 import { StructuredPlanConfigComponent } from './structured-plan-config/structured-plan-config.component';
 
 export const routes: Routes = [
-  { path: '', redirectTo: 'assets/hubs/calendar', pathMatch: 'full' },
-  { path: 'assets/hubs/calendar', component: ContentPageComponent },
+  { path: '', redirectTo: 'assets/hubs/table-management', pathMatch: 'full' },
+  { path: 'assets/hubs/table-management', component: ContentPageComponent },
+  { path: 'assets/hubs/calendar', redirectTo: 'assets/hubs/table-management', pathMatch: 'full' },
   {
     path: 'assets/hubs/guestlist',
     component: GuestlistShellComponent,

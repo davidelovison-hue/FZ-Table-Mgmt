@@ -1,0 +1,635 @@
+  @if (tm.sidePanelMode() !== 'closed') {
+    <aside
+      class="side-panel"
+      [class.asset-based-calendar-view__details-panel]="tm.isBookedSidePanelMode()"
+      [class.asset-based-calendar-view__details-panel--selected]="tm.isBookedSidePanelMode()"
+      [class.side-panel--booked-details]="tm.isBookedDetailsMode()">
+      <button class="side-panel__close" type="button" (click)="tm.closeSidePanel()" aria-label="Close panel">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+
+      @if (tm.sidePanelMode() === 'available' && tm.activeCell(); as cell) {
+        <h2>Available slot</h2>
+        <p class="side-sub">Use row actions for lock/hide. Blocking frees the slot from sales until you unblock.</p>
+        <dl class="side-summary">
+          <dt>Table</dt>
+          <dd>{{ cell.table.name }}</dd>
+          <dt>Zone</dt>
+          <dd>{{ cell.table.zoneLabel }}</dd>
+          <dt>Date</dt>
+          <dd>{{ cell.session.label }} · {{ cell.session.dateLabel }}</dd>
+          <dt>Party range</dt>
+          <dd>{{ tm.partySizeMinForTable(cell.table.id) }} - {{ tm.partySizeMaxForTable(cell.table.id) }}</dd>
+          <dt>Base price</dt>
+          <dd>{{ tm.formatPrice(cell.table.basePrice) }}</dd>
+        </dl>
+        @if (tm.availableActionMessage(); as msg) {
+          <p class="delta-note">{{ msg }}</p>
+        }
+        <div class="side-actions side-actions--split">
+          <button class="button button--large side-btn side-btn--danger" type="button" (click)="tm.blockAvailableSlot()">Block this slot</button>
+          <button class="button button--large side-btn side-btn--secondary" type="button" (click)="tm.openCreateBookingExternalFlow()">
+            Partner checkout (mock)
+          </button>
+        </div>
+      }
+
+      @if (tm.sidePanelMode() === 'create' && tm.activeCell(); as cell) {
+        <h2>Create reservation</h2>
+        <p class="side-sub">Confirms on table — PRD §5.1 quick path.</p>
+        <dl class="side-summary">
+          <dt>Table</dt>
+          <dd>{{ cell.table.name }}</dd>
+          <dt>Zone</dt>
+          <dd>{{ cell.table.zoneLabel }}</dd>
+          <dt>Date</dt>
+          <dd>{{ cell.session.label }} · {{ cell.session.dateLabel }}</dd>
+        </dl>
+        <label class="side-field">
+          Guest / booker name
+          <input type="text" [value]="tm.reservationDraft().guestName" (input)="tm.setReservationName($any($event.target).value)" />
+        </label>
+        <label class="side-field">
+          Party size
+          <input
+            type="number"
+            [min]="tm.partySizeMinForTable(cell.table.id)"
+            [max]="tm.partySizeMaxForTable(cell.table.id)"
+            [value]="tm.reservationDraft().groupSize"
+            (input)="tm.setReservationGroupSize($any($event.target).value)" />
+          <small class="side-help">
+            Min {{ tm.partySizeMinForTable(cell.table.id) }} · Max {{ tm.partySizeMaxForTable(cell.table.id) }}
+          </small>
+        </label>
+        <button
+          class="button button--large side-btn side-btn--primary"
+          type="button"
+          [disabled]="!tm.canConfirmReservation()"
+          (click)="tm.confirmCreateReservation()">
+          Confirm reservation
+        </button>
+      }
+
+      @if (tm.sidePanelMode() === 'reserved' && tm.activeCell(); as cell) {
+        <div class="booked-slot-details">
+          <header class="fz-booked-drawer__header">
+            <div class="fz-booked-drawer__title-row">
+              <h2 class="fz-booked-drawer__name">{{ tm.reserveGuestForActiveCell() }}</h2>
+            </div>
+            <div class="fz-status-axes" aria-label="Reservation status">
+              <div class="fz-status-axes__item">
+                <span class="fz-status-axes__label">Slot</span>
+                <span class="fz-status-axes__value fz-status-axes__value--reserved">{{ tm.lifecycleLabel('to_review') }}</span>
+              </div>
+              <div class="fz-status-axes__item">
+                <span class="fz-status-axes__label">Payment</span>
+                <span class="fz-status-axes__value fz-status-axes__value--unpaid">Not paid</span>
+              </div>
+              <div class="fz-status-axes__item">
+                <span class="fz-status-axes__label">Table</span>
+                <span
+                  class="fz-status-axes__value fz-status-axes__value--table"
+                  [class.fz-status-axes__value--pending]="tm.reserveAssignmentIsPending(tm.reserveAssignmentStatusForActiveCell())">
+                  {{ tm.reserveAssignmentStatusLabel(tm.reserveAssignmentStatusForActiveCell()) }}
+                </span>
+              </div>
+            </div>
+            <p class="fz-booked-drawer__order-id">Order ID - {{ tm.reserveOrderRefForActiveCell() }}</p>
+          </header>
+          <div class="booked-slot-details__info-grid fz-booked-drawer__info-grid">
+            <div class="fz-info-tile">
+              <span class="fz-info-tile__icon" aria-hidden="true"><i class="fa-solid fa-users"></i></span>
+              <div class="fz-info-tile__body">
+                <span class="fz-info-tile__value">{{ tm.reserveGroupSizeForActiveCell() }}</span>
+                <span class="fz-info-tile__label">Group size</span>
+              </div>
+            </div>
+            <div class="fz-info-tile">
+              <span class="fz-info-tile__icon" aria-hidden="true"><i class="fa-solid fa-tag"></i></span>
+              <div class="fz-info-tile__body">
+                <span class="fz-info-tile__value">{{ tm.formatPrice(tm.reserveEstimatedPriceForActiveCell()) }}</span>
+                <span class="fz-info-tile__label">Estimated price</span>
+              </div>
+            </div>
+          </div>
+          <section class="fz-booked-drawer__asset" aria-label="Asset reserved">
+            <div class="fz-booked-drawer__asset-bar">Asset reserved</div>
+            <div class="fz-booked-drawer__asset-card">
+              <p class="fz-booked-drawer__asset-title">{{ cell.table.name }}</p>
+              <p class="fz-booked-drawer__asset-time">{{ cell.session.label }} · {{ cell.session.dateLabel }}</p>
+            </div>
+          </section>
+          @if (tm.availableActionMessage(); as msg) {
+            <p class="delta-note">{{ msg }}</p>
+          }
+          <div class="fz-booked-drawer__actions">
+            @if (tm.reserveAssignmentIsPending(tm.reserveAssignmentStatusForActiveCell())) {
+              <button class="button fz-booked-drawer__btn fz-booked-drawer__btn--primary" type="button" (click)="tm.confirmReservedAssignment()">
+                Confirm assignment
+              </button>
+            }
+            <button class="button fz-booked-drawer__btn fz-booked-drawer__btn--secondary" type="button" (click)="tm.convertReservedToBooking()">
+              Create booking from hold
+            </button>
+            <button class="button fz-booked-drawer__btn fz-booked-drawer__btn--secondary" type="button" (click)="tm.openReservedMove()">Move table</button>
+          </div>
+        </div>
+      }
+
+      @if (tm.sidePanelMode() === 'reserved-move' && tm.activeCell(); as cell) {
+        <div class="booked-slot-details">
+          <h2>Move reserved table</h2>
+          <p class="side-sub">Same zone, capacity fit, target slot must be available.</p>
+          @for (zone of tm.availableTablesForReservedMove(); track zone.key) {
+            <section class="move-zone">
+              <h3>{{ zone.label }}</h3>
+              @for (table of zone.tables; track table.id) {
+                <label class="move-option">
+                  <input
+                    type="radio"
+                    name="reserved-move-table"
+                    [value]="table.id"
+                    [checked]="tm.reservedMoveTableId() === table.id"
+                    (change)="tm.setReservedMoveTable(table.id)" />
+                  <span>{{ table.name }} · pax {{ tm.tablePaxRangeLabel(table) }}</span>
+                </label>
+              }
+            </section>
+          }
+          <div class="fz-booked-drawer__actions">
+            <button
+              class="button fz-booked-drawer__btn fz-booked-drawer__btn--primary"
+              type="button"
+              [disabled]="!tm.canConfirmReservedMove()"
+              (click)="tm.confirmReservedMove()">
+              Confirm move
+            </button>
+            <button class="button fz-booked-drawer__btn fz-booked-drawer__btn--secondary" type="button" (click)="tm.backToReservedPanel()">Back</button>
+          </div>
+        </div>
+      }
+
+      @if (tm.sidePanelMode() === 'blocked' && tm.activeCell(); as cell) {
+        <h2>Blocked slot</h2>
+        <p class="side-sub">Blocked slots cannot be booked until they are unblocked.</p>
+        <dl class="side-summary">
+          <dt>Table</dt>
+          <dd>{{ cell.table.name }}</dd>
+          <dt>Zone</dt>
+          <dd>{{ cell.table.zoneLabel }}</dd>
+          <dt>Date</dt>
+          <dd>{{ cell.session.label }} · {{ cell.session.dateLabel }}</dd>
+          <dt>Reason</dt>
+          <dd>{{ tm.blockedReasonForActiveCell() }}</dd>
+        </dl>
+        <div class="side-actions">
+          <button class="button button--large side-btn side-btn--primary" type="button" (click)="tm.unblockSlot()">Unblock table</button>
+        </div>
+      }
+
+      @if (tm.activeReservation(); as r) {
+        @if (tm.isBookedSidePanelMode()) {
+          <div class="booked-slot-details">
+            @if (tm.sidePanelMode() === 'details') {
+              <header class="fz-booked-drawer__header">
+                <div class="fz-booked-drawer__title-row">
+                  <h2 class="fz-booked-drawer__name">{{ r.guestName }}</h2>
+                </div>
+                <div class="fz-status-axes" aria-label="Reservation">
+                  <div class="fz-status-axes__item">
+                    <span class="fz-status-axes__label">Lifecycle</span>
+                    <span class="fz-status-axes__value">{{ tm.lifecycleLabel(r.lifecycleStatus) }}</span>
+                  </div>
+                  <div class="fz-status-axes__item">
+                    <span class="fz-status-axes__label">Payment</span>
+                    <span
+                      class="fz-status-axes__value"
+                      [class.fz-status-axes__value--paid]="tm.isFullyPaid(r)"
+                      [class.fz-status-axes__value--partial]="!tm.isFullyPaid(r) && tm.sumPayments(r) > 0">
+                      {{ tm.paymentTag(r) }}
+                    </span>
+                  </div>
+                  <div class="fz-status-axes__item">
+                    <span class="fz-status-axes__label">Table</span>
+                    <span class="fz-status-axes__value fz-status-axes__value--table">{{ tm.assignmentLine(r) }}</span>
+                  </div>
+                </div>
+                <p class="fz-booked-drawer__order-id">{{ tm.orderIdLine(r) }}</p>
+              </header>
+
+              <details class="tm-dropdown" open>
+                <summary class="tm-dropdown__summary">Booking basics</summary>
+                <div class="tm-dropdown__content">
+                  <label class="side-field">
+                    Lifecycle status (manual)
+                    <select [value]="r.lifecycleStatus" (change)="tm.setLifecycleStatus(r.id, $any($event.target).value)">
+                      @for (st of statusOptions; track st) {
+                        <option [value]="st">{{ tm.lifecycleLabel(st) }}</option>
+                      }
+                    </select>
+                  </label>
+
+                  <div class="booked-slot-details__info-grid fz-booked-drawer__info-grid">
+                    <div class="fz-info-tile">
+                      <span class="fz-info-tile__icon" aria-hidden="true"><i class="fa-regular fa-clock"></i></span>
+                      <div class="fz-info-tile__body">
+                        <span class="fz-info-tile__value">{{ tm.timeRangeForReservation(r) }}</span>
+                        <span class="fz-info-tile__label">Booking window</span>
+                      </div>
+                    </div>
+                    <div class="fz-info-tile">
+                      <span class="fz-info-tile__icon" aria-hidden="true"><i class="fa-solid fa-users"></i></span>
+                      <div class="fz-info-tile__body">
+                        <span class="fz-info-tile__value">{{ r.checkedInCount }}/{{ r.groupSize }}</span>
+                        <span class="fz-info-tile__label">Checked-in</span>
+                      </div>
+                    </div>
+                    <div class="fz-info-tile">
+                      <span class="fz-info-tile__icon" aria-hidden="true"><i class="fa-solid fa-tag"></i></span>
+                      <div class="fz-info-tile__body">
+                        <span class="fz-info-tile__value">{{ tm.formatPrice(r.totalPrice) }}</span>
+                        <span class="fz-info-tile__label">Total price</span>
+                      </div>
+                    </div>
+                    <div class="fz-info-tile">
+                      <span class="fz-info-tile__icon" aria-hidden="true"><i class="fa-solid fa-scale-balanced"></i></span>
+                      <div class="fz-info-tile__body">
+                        <span class="fz-info-tile__value">{{ tm.formatPrice(tm.outstanding(r)) }}</span>
+                        <span class="fz-info-tile__label">Outstanding</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="tm-side-row">
+                    <label class="side-field">
+                      Zone
+                      <select [value]="selectedZoneForReservation(r)" (change)="setZoneForReservation(r.id, $any($event.target).value)">
+                        <option value="vip">VIP</option>
+                        <option value="main-room">Main Room</option>
+                        <option value="terrace">Terrace</option>
+                      </select>
+                    </label>
+                    <label class="side-field">
+                      Assign table
+                      <select [value]="r.tableId ?? ''" (change)="onReservationTableChange(r.id, $any($event.target).value)">
+                        <option value="">Unassigned</option>
+                        @for (t of tablesForZone(selectedZoneForReservation(r)); track t.id) {
+                          <option [value]="t.id">{{ t.name }} ({{ t.zoneLabel }})</option>
+                        }
+                      </select>
+                    </label>
+                  </div>
+                </div>
+              </details>
+
+              <details class="tm-dropdown">
+                <summary class="tm-dropdown__summary">Door &amp; attendance</summary>
+                <div class="tm-dropdown__content">
+                  <fieldset class="tm-action-group">
+                    <legend class="tm-action-group__legend">Check-in controls</legend>
+                    <div class="tm-checkin-editor">
+                      <label class="tm-checkin-editor__label" [for]="'checkin-count-' + r.id">Checked-in guests</label>
+                      <div class="tm-checkin-editor__controls">
+                        <button type="button" class="button side-btn side-btn--secondary" (click)="tm.adjustCheckedIn(r.id, -1)">−1</button>
+                        <input
+                          class="tm-checkin-editor__input"
+                          [id]="'checkin-count-' + r.id"
+                          type="number"
+                          min="0"
+                          [max]="r.groupSize"
+                          [value]="r.checkedInCount"
+                          (input)="tm.setCheckedInCount(r.id, $any($event.target).value)" />
+                        <button type="button" class="button side-btn side-btn--secondary" (click)="tm.adjustCheckedIn(r.id, 1)">+1</button>
+                      </div>
+                      <p class="tm-checkin-editor__meta">{{ r.checkedInCount }}/{{ r.groupSize }} checked-in · {{ r.groupSize - r.checkedInCount }} pending</p>
+                    </div>
+                    <div class="tm-inline-actions">
+                      <button type="button" class="button side-btn side-btn--secondary" (click)="tm.checkInOneTap(r.id)">Check-in all</button>
+                    </div>
+                  </fieldset>
+                </div>
+              </details>
+
+              <details class="tm-dropdown">
+                <summary class="tm-dropdown__summary">Payments</summary>
+                <div class="tm-dropdown__content">
+                  <div class="tm-fin-box">
+                    <h4>Payments (§5.9)</h4>
+                    <div class="tm-payment-summary">
+                      <div>
+                        <span class="tm-payment-summary__label">Deposit paid</span>
+                        <strong>{{ tm.formatPrice(tm.sumPayments(r)) }}</strong>
+                      </div>
+                      <div>
+                        <span class="tm-payment-summary__label">Deposit target</span>
+                        <strong>{{ tm.formatPrice(r.depositTarget) }}</strong>
+                      </div>
+                      <div>
+                        <span class="tm-payment-summary__label">Outstanding</span>
+                        <strong>{{ tm.formatPrice(tm.depositOutstanding(r)) }}</strong>
+                      </div>
+                    </div>
+
+                    <div class="tm-table-scroll">
+                      <table class="tm-pay-table">
+                        <thead>
+                          <tr>
+                            <th>Method</th>
+                            <th>Date</th>
+                            <th>Amount</th>
+                            <th>By</th>
+                            <th></th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          @for (p of r.payments; track p.id) {
+                            <tr>
+                              <td>{{ p.method }}</td>
+                              <td>{{ p.atIso | slice: 0 : 10 }}</td>
+                              <td>{{ tm.formatPrice(p.amount) }}</td>
+                              <td>{{ p.addedBy }}</td>
+                              <td>
+                                <button type="button" class="tm-link-btn" (click)="tm.removePayment(r.id, p.id)">Remove</button>
+                              </td>
+                            </tr>
+                          }
+                        </tbody>
+                      </table>
+                    </div>
+                    <div class="tm-pay-add">
+                      <label class="tm-pay-add__field">
+                        <span>Method</span>
+                        <select [value]="tm.paymentDraft().method" (change)="tm.setPaymentDraft({ method: $any($event.target).value })">
+                          <option>Bank transfer</option>
+                          <option>Payment link</option>
+                          <option>Card</option>
+                          <option>Cash desk</option>
+                        </select>
+                      </label>
+                      <label class="tm-pay-add__field">
+                        <span>Amount</span>
+                        <input [value]="tm.paymentDraft().amount" (input)="tm.setPaymentDraft({ amount: $any($event.target).value })" />
+                      </label>
+                      <label class="tm-pay-add__field">
+                        <span>By</span>
+                        <input [value]="tm.paymentDraft().addedBy" (input)="tm.setPaymentDraft({ addedBy: $any($event.target).value })" />
+                      </label>
+                      <button
+                        type="button"
+                        class="button button--large button--fill side-btn side-btn--primary tm-pay-add__submit"
+                        (click)="tm.addPaymentFromDraft(r.id)">
+                        Add payment
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </details>
+
+              <details class="tm-dropdown">
+                <summary class="tm-dropdown__summary">POS data</summary>
+                <div class="tm-dropdown__content">
+                  <div class="tm-fin-box">
+                    <h4>POS (§5.8 mock)</h4>
+                    @if (!r.pos) {
+                      <button type="button" class="button side-btn side-btn--secondary" (click)="tm.openPosTab(r.id)">Open POS tab</button>
+                    } @else {
+                      <p class="tm-muted">Session {{ r.pos.id }} · Total {{ tm.formatPrice(r.pos.total) }}</p>
+                      <label class="tm-check">
+                        <input type="checkbox" [checked]="r.pos.delayed" (change)="tm.setPosDelayed(r.id, $any($event.target).checked)" />
+                        Delayed / missing data
+                      </label>
+                      <button type="button" class="button side-btn side-btn--secondary" (click)="tm.simulatePosBill(r.id)">Simulate bill ingest</button>
+                      @if (r.pos.lines.length) {
+                        <ul class="tm-pos-lines">
+                          @for (line of r.pos.lines; track line.label) {
+                            <li>{{ line.label }} × {{ line.qty }} · {{ tm.formatPrice(line.amount) }}</li>
+                          }
+                        </ul>
+                      }
+                    }
+                  </div>
+                </div>
+              </details>
+
+              <details class="tm-dropdown">
+                <summary class="tm-dropdown__summary">Notes &amp; audit</summary>
+                <div class="tm-dropdown__content">
+                  <label class="side-field">
+                    Internal notes
+                    <textarea class="side-field" rows="2" [value]="r.internalNotes" #intNotes></textarea>
+                  </label>
+                  <label class="side-field">
+                    Customer notes
+                    <textarea class="side-field" rows="2" [value]="r.customerNotes" #custNotes></textarea>
+                  </label>
+                  <button
+                    type="button"
+                    class="button side-btn side-btn--secondary"
+                    (click)="tm.updateNotes(r.id, intNotes.value, custNotes.value)">
+                    Save notes
+                  </button>
+
+                  <details class="tm-audit">
+                    <summary>Audit log</summary>
+                    <ul>
+                      @for (a of r.audit.slice().reverse(); track a.id) {
+                        <li><span class="tm-muted">{{ a.atIso | slice: 0 : 16 }}</span> {{ a.message }} — {{ a.actor }}</li>
+                      }
+                    </ul>
+                  </details>
+                </div>
+              </details>
+
+              <section class="tm-booked-details-cta-sticky" aria-label="Reservation actions">
+                <h3 class="tm-booked-details-cta-sticky__title">Actions</h3>
+                <div class="fz-booked-drawer__actions tm-drawer-actions">
+                  @if (r.lifecycleStatus === 'pending') {
+                    <button
+                      type="button"
+                      class="button button--large button--fill fz-booked-drawer__btn fz-booked-drawer__btn--primary tm-drawer-actions__cta"
+                      (click)="tm.confirmAssignment()">
+                      Confirm reservation
+                    </button>
+                  }
+                  <button
+                    type="button"
+                    class="button button--large button--fill fz-booked-drawer__btn fz-booked-drawer__btn--primary tm-drawer-actions__cta"
+                    (click)="syncModificationZoneWithDraft(r); tm.openModifyBooking()">
+                    Edit / upgrade reservation
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  class="button button--large button--fill fz-booked-drawer__btn fz-booked-drawer__btn--secondary tm-reservation-save-footer__btn tm-booked-details-cta-sticky__save"
+                  (click)="tm.saveReservationConfiguration(r.id)">
+                  Save configuration
+                </button>
+              </section>
+            }
+
+            @if (tm.sidePanelMode() === 'move') {
+              <h2>Move table</h2>
+              <p class="side-sub">Same-zone targets that fit pax and show available for this session.</p>
+              @for (zone of tm.availableTablesForMove(); track zone.key) {
+                <section class="move-zone">
+                  <h3>{{ zone.label }}</h3>
+                  @for (table of zone.tables; track table.id) {
+                    <label class="move-option">
+                      <input
+                        type="radio"
+                        name="move-table"
+                        [value]="table.id"
+                        [checked]="tm.modificationDraft().tableId === table.id"
+                        (change)="tm.setModificationTable(table.id)" />
+                      <span>{{ table.name }} · pax {{ tm.tablePaxRangeLabel(table) }}</span>
+                    </label>
+                  }
+                </section>
+              }
+              <button class="button button--large side-btn side-btn--primary" type="button" [disabled]="!tm.canConfirmMoveTable()" (click)="tm.confirmMoveTable()">
+                Confirm table reassignment
+              </button>
+            }
+
+            @if (tm.sidePanelMode() === 'modify') {
+              <h2>Modify reservation</h2>
+              <div class="tm-modify-panel">
+              <div class="tm-side-row tm-side-row--modify">
+                <label class="side-field">
+                  Zone
+                  <select [value]="modificationZoneForReservation(r)" (change)="setModificationZone(r.id, $any($event.target).value)">
+                    <option value="vip">VIP</option>
+                    <option value="main-room">Main Room</option>
+                    <option value="terrace">Terrace</option>
+                  </select>
+                </label>
+                <label class="side-field">
+                  New table
+                  <select [value]="tm.modificationDraft().tableId" (change)="tm.setModificationTable($any($event.target).value)">
+                    <option value="">Select a table</option>
+                    @for (table of modificationTablesForZone(modificationZoneForReservation(r), r); track table.id) {
+                      <option [value]="table.id">
+                        {{ table.name }} · {{ tm.tablePaxRangeLabel(table) }} pax · {{ tm.formatPrice(table.basePrice) }}
+                      </option>
+                    }
+                  </select>
+                </label>
+              </div>
+
+              <dl class="side-summary side-summary--delta">
+                <dt>Old reservation price</dt>
+                <dd>{{ tm.formatPrice(r.totalPrice) }}</dd>
+                <dt>New table base price</dt>
+                <dd>{{ tm.formatPrice(tm.suggestedModificationTotalPrice(tm.modificationDraft().tableId, tm.modificationDraft().groupSize)) }}</dd>
+                <dt>Already paid (kept)</dt>
+                <dd>{{ tm.formatPrice(tm.sumPayments(r)) }}</dd>
+              </dl>
+
+              <label class="side-field">
+                Group size
+                <input
+                  type="number"
+                  [min]="tm.partySizeMinForTable(tm.modificationDraft().tableId)"
+                  [max]="tm.partySizeMaxForTable(tm.modificationDraft().tableId)"
+                  [value]="tm.modificationDraft().groupSize"
+                  (input)="tm.setModificationGroupSize($any($event.target).value)" />
+                <small class="side-help">
+                  Include all attendees for the updated booking. Current: {{ r.groupSize }} · New: {{ tm.modificationDraft().groupSize }}
+                </small>
+              </label>
+              <label class="side-field">
+                Reservation price
+                <input
+                  type="number"
+                  min="0"
+                  [value]="tm.modificationDraft().totalPrice"
+                  (input)="tm.setModificationTotalPrice($any($event.target).value)" />
+                <small class="side-help">
+                  Suggested from table: {{ tm.formatPrice(tm.suggestedModificationTotalPrice(tm.modificationDraft().tableId, tm.modificationDraft().groupSize)) }}
+                </small>
+              </label>
+              <dl class="side-summary side-summary--delta">
+                <dt>Current total</dt>
+                <dd>{{ tm.formatPrice(r.totalPrice) }}</dd>
+                <dt>Delta</dt>
+                <dd [class.delta-up]="tm.currentModificationDelta() > 0" [class.delta-down]="tm.currentModificationDelta() < 0">
+                  {{ tm.currentModificationDelta() >= 0 ? '+' : '' }}{{ tm.formatPrice(tm.currentModificationDelta()) }}
+                </dd>
+              </dl>
+              @if (tm.modificationDraft().groupSize > r.groupSize || tm.currentModificationDelta() > 0) {
+                <p class="delta-note">Pax/price increased. Adjust deposit and request additional upfront payments to secure attendance.</p>
+              }
+
+              <div class="tm-fin-box">
+                <h4>Deposit &amp; upfront requests</h4>
+                <label class="side-field">
+                  Deposit target
+                  <input
+                    type="number"
+                    min="0"
+                    [value]="r.depositTarget"
+                    (input)="tm.setDepositTarget(r.id, $any($event.target).value)" />
+                </label>
+                <p class="tm-upfront-meta">
+                  Paid {{ tm.formatPrice(tm.sumPayments(r)) }} · Deposit outstanding {{ tm.formatPrice(tm.depositOutstanding(r)) }}
+                </p>
+                <div class="tm-upfront-request">
+                  <label class="side-field">
+                    Additional upfront request amount
+                    <input
+                      type="number"
+                      min="1"
+                      [value]="tm.upfrontRequestDraft().amount"
+                      (input)="tm.setUpfrontRequestDraft({ amount: $any($event.target).value })" />
+                  </label>
+                  <label class="side-field">
+                    Reason / note
+                    <input
+                      type="text"
+                      placeholder="e.g. +2 guests / table upgrade"
+                      [value]="tm.upfrontRequestDraft().note"
+                      (input)="tm.setUpfrontRequestDraft({ note: $any($event.target).value })" />
+                  </label>
+                  <button type="button" class="button side-btn side-btn--secondary" (click)="tm.requestAdditionalUpfrontPayment(r.id)">
+                    Request additional payment
+                  </button>
+                </div>
+
+                @if (tm.upfrontPaymentRequests(r).length) {
+                  <ul class="tm-upfront-list">
+                    @for (req of tm.upfrontPaymentRequests(r); track req.id) {
+                      <li>
+                        <span>{{ tm.formatPrice(req.amount) }}</span>
+                        <small>{{ req.requestedAtIso | slice: 0 : 16 }} · {{ req.note || 'No note' }}</small>
+                      </li>
+                    }
+                  </ul>
+                }
+              </div>
+
+              <label class="side-field">
+                Modification notes
+                <textarea
+                  class="side-field"
+                  rows="2"
+                  [value]="tm.upfrontRequestDraft().note"
+                  (input)="tm.setUpfrontRequestDraft({ note: $any($event.target).value })"
+                  placeholder="Context for upgrade/move and group-size change"></textarea>
+              </label>
+
+              </div>
+              <section class="tm-modify-cta-sticky" aria-label="Confirm modification">
+                <button
+                  type="button"
+                  class="button button--large button--fill fz-booked-drawer__btn fz-booked-drawer__btn--primary tm-drawer-actions__cta tm-modify-confirm-btn"
+                  [disabled]="!tm.canConfirmBookingModification()"
+                  (click)="tm.confirmBookingModification()">
+                  Confirm
+                </button>
+              </section>
+            }
+          </div>
+        }
+      }
+    </aside>
+  }

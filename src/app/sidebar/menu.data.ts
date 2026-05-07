@@ -31,7 +31,7 @@ export const MENU_DATA: MenuItem[] = [
     isOpen: true,
     items: [
       { label: 'Hubs' },
-      { label: 'Calendar', route: '/assets/hubs/calendar' },
+      { label: 'Table management', route: '/assets/hubs/table-management' },
     ],
   },
   {

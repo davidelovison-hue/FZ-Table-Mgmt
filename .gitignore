@@ -40,6 +40,9 @@ testem.log
 .tools/
 .cursor/
 
+# Local GitHub Pages path preview (npm run preview:gh-pages)
+.gh-preview/
+
 # System files
 .DS_Store
 Thumbs.db
